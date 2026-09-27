@@ -1,0 +1,6 @@
+{
+  "name": "NIFTY 50 Quant Terminal & Option Chain",
+  "description": "Real-time NIFTY 50 1-minute candlestick terminal and live F&O option chain with Greeks, PCR, and custom scale controls.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
