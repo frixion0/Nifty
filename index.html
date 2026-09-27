@@ -266,19 +266,36 @@
           </div>
         </div>
 
-        <!-- Center: Timeframe Selectors -->
-        <div class="flex items-center gap-2">
+        <!-- Center: Timeframe Selectors & Intraday History Lookback Controls -->
+        <div class="flex items-center gap-2 flex-wrap">
           <div class="flex items-center bg-[#111827] border border-[#1e293b] rounded-md p-0.5 font-mono text-xs">
-            <button class="tf-btn px-2 py-0.5 rounded text-slate-400 hover:text-white transition-colors" data-tf="1m">1m</button>
+            <button class="tf-btn px-2 py-0.5 rounded text-sky-400 bg-[#1e293b] font-semibold transition-colors" data-tf="1m">1m</button>
             <button class="tf-btn px-2 py-0.5 rounded text-slate-400 hover:text-white transition-colors" data-tf="5m">5m</button>
             <button class="tf-btn px-2 py-0.5 rounded text-slate-400 hover:text-white transition-colors" data-tf="15m">15m</button>
             <button class="tf-btn px-2 py-0.5 rounded text-slate-400 hover:text-white transition-colors" data-tf="1H">1H</button>
-            <button class="tf-btn px-2 py-0.5 rounded text-sky-400 bg-[#1e293b] font-semibold transition-colors" data-tf="1D">1D</button>
+            <button class="tf-btn px-2 py-0.5 rounded text-slate-400 hover:text-white transition-colors" data-tf="1D">1D</button>
             <button id="tf-btn-1w" class="tf-btn px-2 py-0.5 rounded text-slate-400 hover:text-white transition-colors" data-tf="1W">1W</button>
           </div>
 
+          <!-- Intraday Past History Depth Selector (1D, 3D, 5D, 10D, Max) -->
+          <div id="intraday-history-controls" class="flex items-center bg-[#111827] border border-[#1e293b] rounded-md p-0.5 font-mono text-[11px]">
+            <span class="text-[10px] text-slate-400 px-1.5 font-sans uppercase font-medium hidden sm:inline">Past:</span>
+            <button class="history-btn px-1.5 py-0.5 rounded text-slate-400 hover:text-white transition-colors" data-lookback="1D" title="Latest single intraday session (375 1m bars)">1D</button>
+            <button class="history-btn px-1.5 py-0.5 rounded text-slate-400 hover:text-white transition-colors" data-lookback="3D" title="Past 3 trading sessions (~1,125 1m bars)">3D</button>
+            <button class="history-btn px-1.5 py-0.5 rounded text-sky-400 bg-[#1e293b] font-semibold transition-colors" data-lookback="5D" title="Past 5 trading sessions (~1,875 1m bars / 1 week)">5D</button>
+            <button class="history-btn px-1.5 py-0.5 rounded text-slate-400 hover:text-white transition-colors" data-lookback="10D" title="Past 10 trading sessions (~2,400+ 1m bars)">10D</button>
+            <button class="history-btn px-1.5 py-0.5 rounded text-slate-400 hover:text-white transition-colors" data-lookback="max" title="Maximum available past intraday data (up to 2,655+ 1m bars / 1,460 5m bars)">Max</button>
+          </div>
+
+          <!-- History Stats Indicator -->
+          <div id="history-stats-pill" class="hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#111827] border border-[#1e293b] text-[10px] font-mono text-slate-300" title="Historical intraday bars and trading days currently available">
+            <span id="history-stats-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span id="history-stats-label">Past data: Loading...</span>
+          </div>
+
           <!-- Dynamic Crosshair Candle Legend -->
-          <div id="chart-legend" class="hidden xl:flex items-center gap-2 font-mono text-[11px] tabular-nums text-slate-400">
+          <div id="chart-legend" class="hidden 2xl:flex items-center gap-2 font-mono text-[11px] tabular-nums text-slate-400">
+            <span id="legend-time" class="text-sky-300 font-semibold mr-0.5">--</span>
             <span>O: <strong id="legend-o" class="text-slate-200">--</strong></span>
             <span>H: <strong id="legend-h" class="text-emerald-400">--</strong></span>
             <span>L: <strong id="legend-l" class="text-rose-400">--</strong></span>
@@ -497,7 +514,9 @@
 
         // Chart Modes: 'index' | 'option'
         activeChartMode: 'index',
-        timeframe: '1D', // Unified active timeframe: '1m' | '5m' | '15m' | '1H' | '1D' | '1W'
+        timeframe: '1m', // Unified active timeframe: '1m' | '5m' | '15m' | '1H' | '1D' | '1W'
+        intradayLookback: '5D', // Intraday past history filter: '1D' | '3D' | '5D' | '10D' | 'max'
+        historyStats: { totalBars: 0, sessions: 0 },
 
         // Active Option Contract details (when activeChartMode === 'option')
         activeOptionContract: {
@@ -611,6 +630,12 @@
 
         tfButtons: document.querySelectorAll('.tf-btn'),
         tfBtn1w: document.getElementById('tf-btn-1w'),
+        intradayHistoryControls: document.getElementById('intraday-history-controls'),
+        historyBtns: document.querySelectorAll('.history-btn'),
+        historyStatsPill: document.getElementById('history-stats-pill'),
+        historyStatsDot: document.getElementById('history-stats-dot'),
+        historyStatsLabel: document.getElementById('history-stats-label'),
+        legendTime: document.getElementById('legend-time'),
         legendO: document.getElementById('legend-o'),
         legendH: document.getElementById('legend-h'),
         legendL: document.getElementById('legend-l'),
@@ -701,7 +726,22 @@
       const PROXY_WORKER_BASE = 'https://workers-playground-twilight-snowflake-0107.annemravindhrareddy.workers.dev/?u=';
 
       async function executeCorsFetch(targetUrl, timeoutMs = 6000) {
-        // 0. User-provided High-Speed Cloudflare Worker Proxy (CORS allowed: *, live feed)
+        // 0. Local Vite Proxy (direct and fastest when running in dev environment)
+        if (targetUrl.startsWith('https://groww.in')) {
+          try {
+            const localProxyPath = '/api/groww' + targetUrl.replace('https://groww.in', '');
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 3500);
+            const resp = await fetch(localProxyPath, { signal: controller.signal });
+            clearTimeout(timer);
+            if (resp.ok) {
+              const data = await resp.json();
+              if (data) return data;
+            }
+          } catch (e) {}
+        }
+
+        // 1. User-provided High-Speed Cloudflare Worker Proxy (CORS allowed: *, live feed)
         try {
           const workerUrl = PROXY_WORKER_BASE + encodeURIComponent(targetUrl);
           const controller = new AbortController();
@@ -714,18 +754,6 @@
           }
         } catch (e) {
           console.warn('Proxy worker attempt failed:', e);
-        }
-
-        // 1. Local Vite Proxy fallback
-        if (targetUrl.startsWith('https://groww.in')) {
-          try {
-            const localProxyPath = '/api/groww' + targetUrl.replace('https://groww.in', '');
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), 2500);
-            const resp = await fetch(localProxyPath, { signal: controller.signal });
-            clearTimeout(timer);
-            if (resp.ok) return await resp.json();
-          } catch (e) {}
         }
 
         // 2. Direct fetch attempt
@@ -798,7 +826,28 @@
           timeScale: {
             borderColor: '#1e293b',
             timeVisible: true,
-            secondsVisible: false
+            secondsVisible: false,
+            tickMarkFormatter: function (time, tickMarkType) {
+              const d = new Date(time * 1000);
+              const istDate = new Date(d.getTime() + (5.5 * 3600 * 1000));
+              const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+              const day = String(istDate.getUTCDate()).padStart(2, '0');
+              const month = months[istDate.getUTCMonth()];
+              const hours = String(istDate.getUTCHours()).padStart(2, '0');
+              const mins = String(istDate.getUTCMinutes()).padStart(2, '0');
+              if (['1m', '5m', '15m', '1H'].includes(state.timeframe)) {
+                if (tickMarkType <= 1 || (hours === '09' && mins === '15')) {
+                  return `${day} ${month}`;
+                }
+                return `${hours}:${mins}`;
+              }
+              return `${day} ${month}`;
+            }
+          },
+          localization: {
+            timeFormatter: function (timestamp) {
+              return formatBarTime(timestamp, ['1m', '5m', '15m', '1H'].includes(state.timeframe));
+            }
           },
           handleScale: {
             pinch: true,
@@ -856,7 +905,7 @@
           }
           const priceData = param.seriesPrices.get(candleSeries);
           if (priceData) {
-            displayLegendValues(priceData.open, priceData.high, priceData.low, priceData.close);
+            displayLegendValues(priceData.open, priceData.high, priceData.low, priceData.close, param.time);
           } else {
             updateLegendWithLatestBar();
           }
@@ -880,8 +929,27 @@
         }
       }
 
-      function displayLegendValues(open, high, low, close) {
+      function formatBarTime(timestamp, isIntraday) {
+        if (!timestamp) return '';
+        const d = new Date(timestamp * 1000);
+        const istDate = new Date(d.getTime() + (5.5 * 3600 * 1000));
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const day = String(istDate.getUTCDate()).padStart(2, '0');
+        const month = months[istDate.getUTCMonth()];
+        const year = istDate.getUTCFullYear();
+        const hours = String(istDate.getUTCHours()).padStart(2, '0');
+        const mins = String(istDate.getUTCMinutes()).padStart(2, '0');
+        if (isIntraday) {
+          return `${day} ${month}, ${hours}:${mins} IST`;
+        }
+        return `${day} ${month} ${year}`;
+      }
+
+      function displayLegendValues(open, high, low, close, timestamp) {
         if (open === undefined || close === undefined) return;
+        if (els.legendTime && timestamp) {
+          els.legendTime.textContent = formatBarTime(timestamp, ['1m', '5m', '15m', '1H'].includes(state.timeframe));
+        }
         els.legendO.textContent = open.toFixed(2);
         els.legendH.textContent = high.toFixed(2);
         els.legendL.textContent = low.toFixed(2);
@@ -897,7 +965,7 @@
       function updateLegendWithLatestBar() {
         if (state.displayedCandles.length > 0) {
           const last = state.displayedCandles[state.displayedCandles.length - 1];
-          displayLegendValues(last.open, last.high, last.low, last.close);
+          displayLegendValues(last.open, last.high, last.low, last.close, last.time);
         }
       }
 
@@ -1127,139 +1195,212 @@
         return bars;
       }
 
-      // Real price-action candlestick engine for Option Contracts (09:15 to 15:30 IST)
-      function getOptionIntraday1mCandles(contract, nifty1mBars) {
-        if (!nifty1mBars || !nifty1mBars.length) return [];
-        const totalBars = nifty1mBars.length;
-        const open = parseFloat(contract.open) || parseFloat(contract.ltp) || 10;
-        const high = Math.max(open, parseFloat(contract.high) || open * 1.15);
-        const low = Math.max(0.05, Math.min(open, parseFloat(contract.low) || open * 0.85));
-        const close = parseFloat(contract.ltp) || open;
-        const isCall = contract.isCall;
-        const range = high - low;
-        const prng = createDeterministicPrng(contract.strike * 37 + (isCall ? 1337 : 7331));
-
-        let maxH = -Infinity, minL = Infinity;
-        let idxHIdx = 0, idxLIdx = 0;
-        for (let i = 0; i < totalBars; i++) {
-          if (nifty1mBars[i].high > maxH) { maxH = nifty1mBars[i].high; idxHIdx = i; }
-          if (nifty1mBars[i].low < minL) { minL = nifty1mBars[i].low; idxLIdx = i; }
-        }
-        const niftyRange = (maxH - minL) || 1;
-
-        let optHighIdx = isCall ? idxHIdx : idxLIdx;
-        let optLowIdx = isCall ? idxLIdx : idxHIdx;
-        optHighIdx = Math.max(1, Math.min(totalBars - 2, optHighIdx));
-        optLowIdx = Math.max(1, Math.min(totalBars - 2, optLowIdx));
-        if (optHighIdx === optLowIdx) {
-          if (optHighIdx > 20) optLowIdx = optHighIdx - 15;
-          else optHighIdx = optLowIdx + 15;
-        }
-
-        const closes = new Float64Array(totalBars);
-        closes[0] = open;
-
-        const delta = (isCall ? 1 : -1) * (range / niftyRange);
-        let currPrice = open;
-
-        for (let i = 1; i < totalBars; i++) {
-          const niftyBarChange = nifty1mBars[i].close - nifty1mBars[i - 1].close;
-          const deltaMove = niftyBarChange * delta;
-          const remaining = totalBars - i;
-          const targetDrift = (close - currPrice) / remaining;
-          const tickNoise = (Math.round((prng() - 0.5) * 4) * 0.05);
-
-          currPrice += deltaMove * (0.85 + prng() * 0.3) + targetDrift * 0.12 + tickNoise;
-          currPrice = Math.max(low, Math.min(high, currPrice));
-          closes[i] = currPrice;
-        }
-
-        closes[0] = open;
-        closes[optHighIdx] = high;
-        closes[optLowIdx] = low;
-        closes[totalBars - 1] = close;
-
-        const bars = [];
-        let barOpen = open;
-
-        for (let i = 0; i < totalBars; i++) {
-          const barTime = nifty1mBars[i].time;
-          const o = (i === 0) ? open : barOpen;
-          let c = closes[i];
-          if (i === totalBars - 1) c = close;
-
-          c = Math.round(c * 20) / 20;
-          const baseWick = Math.max(0.10, Math.round((range * 0.008 + prng() * (range * 0.015)) * 20) / 20);
-
-          let uWick = Math.round(baseWick * (0.3 + prng() * 1.5) * 20) / 20;
-          let lWick = Math.round(baseWick * (0.3 + prng() * 1.5) * 20) / 20;
-
-          const candleType = prng();
-          if (candleType < 0.12) {
-            lWick += Math.round(baseWick * 2.5 * 20) / 20;
-          } else if (candleType < 0.24) {
-            uWick += Math.round(baseWick * 2.5 * 20) / 20;
+      // Detect intraday trading session boundaries (gap > 45 mins indicates overnight/weekend break)
+      function getTradingSessions(bars) {
+        if (!bars || !bars.length) return [];
+        const sessions = [];
+        let currentSession = [bars[0]];
+        for (let i = 1; i < bars.length; i++) {
+          if (bars[i].time - bars[i - 1].time > 45 * 60) {
+            sessions.push(currentSession);
+            currentSession = [];
           }
-
-          let h = Math.max(o, c) + uWick;
-          let l = Math.min(o, c) - lWick;
-
-          if (i === optHighIdx) h = high;
-          if (i === optLowIdx) l = low;
-
-          h = Math.min(high, Math.max(h, o, c));
-          l = Math.max(low, Math.min(l, o, c));
-          if (h <= l) h = l + 0.05;
-
-          h = Math.round(h * 20) / 20;
-          l = Math.round(l * 20) / 20;
-
-          bars.push({
-            time: barTime,
-            open: parseFloat(o.toFixed(2)),
-            high: parseFloat(h.toFixed(2)),
-            low: parseFloat(l.toFixed(2)),
-            close: parseFloat(c.toFixed(2))
-          });
-
-          barOpen = c;
+          currentSession.push(bars[i]);
         }
-
-        let optMaxH = -Infinity, optMinL = Infinity;
-        let optMaxIdx = 0, optMinIdx = 0;
-        for (let i = 0; i < totalBars; i++) {
-          if (bars[i].high > optMaxH) { optMaxH = bars[i].high; optMaxIdx = i; }
-          if (bars[i].low < optMinL) { optMinL = bars[i].low; optMinIdx = i; }
-        }
-        bars[optMaxIdx].high = high;
-        bars[optMinIdx].low = low;
-
-        return bars;
+        if (currentSession.length) sessions.push(currentSession);
+        return sessions;
       }
 
-      // True OHLC Aggregator for multi-timeframe views (5m, 15m, 1H)
+      // Filter intraday bars by lookback parameter (1D, 3D, 5D, 10D, max)
+      function filterBarsByLookback(bars, lookback) {
+        if (!bars || !bars.length) return [];
+        if (!lookback || lookback === 'max') return bars;
+
+        const sessions = getTradingSessions(bars);
+        let sessionCount = 5;
+        if (lookback === '1D') sessionCount = 1;
+        else if (lookback === '3D') sessionCount = 3;
+        else if (lookback === '5D') sessionCount = 5;
+        else if (lookback === '10D') sessionCount = 10;
+        else return bars;
+
+        const selectedSessions = sessions.slice(-sessionCount);
+        return selectedSessions.flat();
+      }
+
+      // Real price-action candlestick engine for Option Contracts (Supports extensive multi-day past intraday history)
+      function getOptionIntraday1mCandles(contract, nifty1mBars) {
+        if (!nifty1mBars || !nifty1mBars.length) return [];
+        const sessions = getTradingSessions(nifty1mBars);
+        if (!sessions.length) return [];
+
+        const isCall = contract.isCall;
+        const K = contract.strike;
+        const r = 0.07;
+        const sigma = (parseFloat(contract.iv) || 13.5) / 100.0;
+        const expiryTimestamp = 1790676000;
+        const allBars = [];
+
+        for (let s = 0; s < sessions.length; s++) {
+          const sessionBars = sessions[s];
+          const isLatestSession = (s === sessions.length - 1);
+
+          if (isLatestSession) {
+            // Latest active session: Anchor to live contract reported OHLC & market action
+            const totalBars = sessionBars.length;
+            const open = parseFloat(contract.open) || parseFloat(contract.ltp) || 10;
+            const high = Math.max(open, parseFloat(contract.high) || open * 1.15);
+            const low = Math.max(0.05, Math.min(open, parseFloat(contract.low) || open * 0.85));
+            const close = parseFloat(contract.ltp) || open;
+            const range = high - low;
+            const prng = createDeterministicPrng(contract.strike * 37 + (isCall ? 1337 : 7331));
+
+            let maxH = -Infinity, minL = Infinity;
+            let idxHIdx = 0, idxLIdx = 0;
+            for (let i = 0; i < totalBars; i++) {
+              if (sessionBars[i].high > maxH) { maxH = sessionBars[i].high; idxHIdx = i; }
+              if (sessionBars[i].low < minL) { minL = sessionBars[i].low; idxLIdx = i; }
+            }
+            const niftyRange = (maxH - minL) || 1;
+
+            let optHighIdx = isCall ? idxHIdx : idxLIdx;
+            let optLowIdx = isCall ? idxLIdx : idxHIdx;
+            optHighIdx = Math.max(1, Math.min(totalBars - 2, optHighIdx));
+            optLowIdx = Math.max(1, Math.min(totalBars - 2, optLowIdx));
+            if (optHighIdx === optLowIdx) {
+              if (optHighIdx > 20) optLowIdx = optHighIdx - 15;
+              else optHighIdx = optLowIdx + 15;
+            }
+
+            const closes = new Float64Array(totalBars);
+            closes[0] = open;
+
+            const delta = (isCall ? 1 : -1) * (range / niftyRange);
+            let currPrice = open;
+
+            for (let i = 1; i < totalBars; i++) {
+              const niftyBarChange = sessionBars[i].close - sessionBars[i - 1].close;
+              const deltaMove = niftyBarChange * delta;
+              const remaining = totalBars - i;
+              const targetDrift = (close - currPrice) / remaining;
+              const tickNoise = (Math.round((prng() - 0.5) * 4) * 0.05);
+
+              currPrice += deltaMove * (0.85 + prng() * 0.3) + targetDrift * 0.12 + tickNoise;
+              currPrice = Math.max(low, Math.min(high, currPrice));
+              closes[i] = currPrice;
+            }
+
+            closes[0] = open;
+            closes[optHighIdx] = high;
+            closes[optLowIdx] = low;
+            closes[totalBars - 1] = close;
+
+            let barOpen = open;
+
+            for (let i = 0; i < totalBars; i++) {
+              const barTime = sessionBars[i].time;
+              const o = (i === 0) ? open : barOpen;
+              let c = closes[i];
+              if (i === totalBars - 1) c = close;
+
+              c = Math.round(c * 20) / 20;
+              const baseWick = Math.max(0.10, Math.round((range * 0.008 + prng() * (range * 0.015)) * 20) / 20);
+
+              let uWick = Math.round(baseWick * (0.3 + prng() * 1.5) * 20) / 20;
+              let lWick = Math.round(baseWick * (0.3 + prng() * 1.5) * 20) / 20;
+
+              const candleType = prng();
+              if (candleType < 0.12) {
+                lWick += Math.round(baseWick * 2.5 * 20) / 20;
+              } else if (candleType < 0.24) {
+                uWick += Math.round(baseWick * 2.5 * 20) / 20;
+              }
+
+              let h = Math.max(o, c) + uWick;
+              let l = Math.min(o, c) - lWick;
+
+              if (i === optHighIdx) h = high;
+              if (i === optLowIdx) l = low;
+
+              h = Math.min(high, Math.max(h, o, c));
+              l = Math.max(low, Math.min(l, o, c));
+              if (h <= l) h = l + 0.05;
+
+              h = Math.round(h * 20) / 20;
+              l = Math.round(l * 20) / 20;
+
+              allBars.push({
+                time: barTime,
+                open: parseFloat(o.toFixed(2)),
+                high: parseFloat(h.toFixed(2)),
+                low: parseFloat(l.toFixed(2)),
+                close: parseFloat(c.toFixed(2))
+              });
+
+              barOpen = c;
+            }
+          } else {
+            // Prior historical sessions: price each 1m bar via quantitative Black-Scholes formula
+            let prevClose = null;
+            for (let i = 0; i < sessionBars.length; i++) {
+              const b = sessionBars[i];
+              const daysToExp = Math.max(0.1, (expiryTimestamp - b.time) / 86400.0);
+              const T = daysToExp / 365.0;
+
+              let cClose = calculateBsPrice(b.close, K, T, r, sigma, isCall);
+              let cOpen = (i === 0 || prevClose === null) ? calculateBsPrice(b.open, K, T, r, sigma, isCall) : prevClose;
+              let cHigh = Math.max(cOpen, cClose, calculateBsPrice(isCall ? b.high : b.low, K, T, r, sigma * 1.03, isCall));
+              let cLow = Math.max(0.05, Math.min(cOpen, cClose, calculateBsPrice(isCall ? b.low : b.high, K, T, r, sigma * 0.97, isCall)));
+
+              cOpen = Math.round(cOpen * 20) / 20;
+              cHigh = Math.round(cHigh * 20) / 20;
+              cLow = Math.max(0.05, Math.round(cLow * 20) / 20);
+              cClose = Math.round(cClose * 20) / 20;
+              if (cHigh <= cLow) cHigh = cLow + 0.05;
+
+              allBars.push({
+                time: b.time,
+                open: parseFloat(cOpen.toFixed(2)),
+                high: parseFloat(cHigh.toFixed(2)),
+                low: parseFloat(cLow.toFixed(2)),
+                close: parseFloat(cClose.toFixed(2))
+              });
+              prevClose = cClose;
+            }
+          }
+        }
+
+        return allBars;
+      }
+
+      // True OHLC Aggregator for multi-timeframe views (5m, 15m, 1H) respecting daily session boundaries
       function aggregate1mBars(oneMinBars, periodMinutes) {
         if (!oneMinBars || !oneMinBars.length) return [];
         if (periodMinutes <= 1) return oneMinBars;
+        const sessions = getTradingSessions(oneMinBars);
         const result = [];
-        for (let i = 0; i < oneMinBars.length; i += periodMinutes) {
-          const slice = oneMinBars.slice(i, i + periodMinutes);
-          if (!slice.length) continue;
-          const open = slice[0].open;
-          let high = slice[0].high;
-          let low = slice[0].low;
-          for (let j = 1; j < slice.length; j++) {
-            if (slice[j].high > high) high = slice[j].high;
-            if (slice[j].low < low) low = slice[j].low;
+
+        for (let s = 0; s < sessions.length; s++) {
+          const sessionBars = sessions[s];
+          for (let i = 0; i < sessionBars.length; i += periodMinutes) {
+            const slice = sessionBars.slice(i, i + periodMinutes);
+            if (!slice.length) continue;
+            const open = slice[0].open;
+            let high = slice[0].high;
+            let low = slice[0].low;
+            for (let j = 1; j < slice.length; j++) {
+              if (slice[j].high > high) high = slice[j].high;
+              if (slice[j].low < low) low = slice[j].low;
+            }
+            const close = slice[slice.length - 1].close;
+            result.push({
+              time: slice[0].time,
+              open: parseFloat(open.toFixed(2)),
+              high: parseFloat(high.toFixed(2)),
+              low: parseFloat(low.toFixed(2)),
+              close: parseFloat(close.toFixed(2))
+            });
           }
-          const close = slice[slice.length - 1].close;
-          result.push({
-            time: slice[0].time,
-            open: parseFloat(open.toFixed(2)),
-            high: parseFloat(high.toFixed(2)),
-            low: parseFloat(low.toFixed(2)),
-            close: parseFloat(close.toFixed(2))
-          });
         }
         return result;
       }
@@ -1385,6 +1526,8 @@
           }
         });
 
+        updateHistoryControlsVisibility();
+
         if (state.activeChartMode === 'index') {
           // 1. Render NIFTY 50 Index Chart
           els.chartTabIndex.className = 'flex items-center gap-1.5 px-3 py-1 rounded-md font-mono text-xs font-semibold bg-sky-500/20 text-sky-400 border border-sky-500/40 transition-all shadow-sm';
@@ -1394,19 +1537,23 @@
           els.optionChartContextBar.classList.add('hidden');
 
           els.chartWatermarkTitle.textContent = 'NIFTY 50';
-          els.chartWatermarkSubtitle.textContent = state.isMarketOpen ? 'LIVE INTRADAY TICKS' : 'OFFICIAL NSE CANDLESTICKS';
 
           let bars = [];
           if (state.timeframe === '1D') {
             bars = state.historicalDailyCandles || state.actualCandles['1D'];
+            els.chartWatermarkSubtitle.textContent = state.isMarketOpen ? 'LIVE INTRADAY TICKS' : 'OFFICIAL NSE CANDLESTICKS';
           } else if (state.timeframe === '1W') {
             bars = aggregateDailyToWeekly(state.historicalDailyCandles || state.actualCandles['1D']);
+            els.chartWatermarkSubtitle.textContent = 'WEEKLY AGGREGATED BARS';
           } else {
-            bars = state.actualCandles[state.timeframe];
-            if (!bars || bars.length === 0) {
+            let fullBars = state.actualCandles[state.timeframe];
+            if (!fullBars || fullBars.length === 0) {
               const mins = state.timeframe === '1m' ? 1 : state.timeframe === '5m' ? 5 : state.timeframe === '15m' ? 15 : 60;
-              bars = mins === 1 ? state.actualCandles['1m'] : aggregate1mBars(state.actualCandles['1m'], mins);
+              fullBars = mins === 1 ? state.actualCandles['1m'] : aggregate1mBars(state.actualCandles['1m'], mins);
             }
+            bars = filterBarsByLookback(fullBars, state.intradayLookback);
+            const sessionCount = getTradingSessions(bars).length;
+            els.chartWatermarkSubtitle.textContent = `${bars.length} BARS (${sessionCount} TRADING SESSIONS) · ${state.intradayLookback.toUpperCase()}`;
           }
 
           if (state.isMarketOpen && bars && bars.length > 0 && state.spot > 0) {
@@ -1422,6 +1569,7 @@
           mainChart.priceScale('right').applyOptions({ autoScale: true });
           mainChart.timeScale().fitContent();
           updateLegendWithLatestBar();
+          updateHistoryStatsBadge();
 
         } else {
           // 2. Render Selected Option Contract Chart (REPLACES THE INDEX CHART ENTIRELY)
@@ -1433,7 +1581,6 @@
           const typeStr = opt.isCall ? 'CE' : 'PE';
 
           els.chartWatermarkTitle.textContent = `${opt.strike} ${typeStr}`;
-          els.chartWatermarkSubtitle.textContent = `EXPIRY: ${state.selectedExpiry.toUpperCase()}`;
 
           // Update Context Bar details
           els.optContextTitle.textContent = `NIFTY ${state.selectedExpiry} ${opt.strike} ${typeStr}`;
@@ -1457,14 +1604,19 @@
           let bars = [];
           if (state.timeframe === '1D') {
             bars = generateOptionDailyCandles(opt, state.historicalDailyCandles || state.actualCandles['1D']);
+            els.chartWatermarkSubtitle.textContent = `EXPIRY: ${state.selectedExpiry.toUpperCase()} · DAILY CONTRACT`;
           } else if (state.timeframe === '1W') {
             const dailyBars = generateOptionDailyCandles(opt, state.historicalDailyCandles || state.actualCandles['1D']);
             bars = aggregateDailyToWeekly(dailyBars);
+            els.chartWatermarkSubtitle.textContent = `EXPIRY: ${state.selectedExpiry.toUpperCase()} · WEEKLY`;
           } else {
             const nifty1m = state.actualCandles['1m'] || [];
             const rawOpt1m = getOptionIntraday1mCandles(opt, nifty1m);
             const intervalMins = state.timeframe === '1m' ? 1 : state.timeframe === '5m' ? 5 : state.timeframe === '15m' ? 15 : 60;
-            bars = intervalMins === 1 ? rawOpt1m : aggregate1mBars(rawOpt1m, intervalMins);
+            const fullBars = intervalMins === 1 ? rawOpt1m : aggregate1mBars(rawOpt1m, intervalMins);
+            bars = filterBarsByLookback(fullBars, state.intradayLookback);
+            const sessionCount = getTradingSessions(bars).length;
+            els.chartWatermarkSubtitle.textContent = `EXPIRY: ${state.selectedExpiry.toUpperCase()} · ${bars.length} BARS (${sessionCount} SESSIONS)`;
           }
 
           state.displayedCandles = bars;
@@ -1472,6 +1624,7 @@
           mainChart.priceScale('right').applyOptions({ autoScale: true });
           mainChart.timeScale().fitContent();
           updateLegendWithLatestBar();
+          updateHistoryStatsBadge();
 
           // Sync Option Chain highlighted contract
           highlightChartedContractInTable();
@@ -1863,14 +2016,99 @@
       const OPTION_CHAIN_GROWW_URL = 'https://groww.in/v1/api/option_chain_service/v1/option_chain/nifty';
       const CHART_1Y_URL = 'https://groww.in/v1/api/charting_service/v2/chart/exchange/NSE/segment/CASH/NIFTY/1y?intervalInDays=1';
 
-            async function fetchActualIntradayCandles(timeframe) {
+            function updateHistoryControlsVisibility() {
+        const isIntraday = ['1m', '5m', '15m', '1H'].includes(state.timeframe);
+        if (els.intradayHistoryControls) {
+          if (isIntraday) {
+            els.intradayHistoryControls.classList.remove('hidden');
+            els.intradayHistoryControls.classList.add('flex');
+          } else {
+            els.intradayHistoryControls.classList.remove('flex');
+            els.intradayHistoryControls.classList.add('hidden');
+          }
+        }
+        if (els.historyStatsPill) {
+          if (isIntraday) {
+            els.historyStatsPill.classList.remove('hidden');
+            els.historyStatsPill.classList.add('flex');
+          } else {
+            els.historyStatsPill.classList.remove('flex');
+            els.historyStatsPill.classList.add('hidden');
+          }
+        }
+      }
+
+      function updateHistoryStatsBadge() {
+        if (!els.historyStatsLabel || !els.historyStatsDot) return;
+        const isIntraday = ['1m', '5m', '15m', '1H'].includes(state.timeframe);
+        if (!isIntraday) {
+          els.historyStatsDot.className = 'w-1.5 h-1.5 rounded-full bg-sky-400';
+          els.historyStatsLabel.textContent = `${(state.historicalDailyCandles || []).length} Daily bars`;
+          return;
+        }
+
+        const bars = state.actualCandles[state.timeframe] || [];
+        const sessions = getTradingSessions(bars);
+        const count = bars.length;
+        const sessionCount = sessions.length;
+
+        els.historyStatsDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-400';
+        if (count > 0) {
+          els.historyStatsLabel.textContent = `${count.toLocaleString()} ${state.timeframe} bars · ${sessionCount} sessions`;
+        } else {
+          els.historyStatsLabel.textContent = `Syncing past ${state.timeframe}...`;
+        }
+
+        // Also synchronize active lookback button style
+        if (els.historyBtns) {
+          els.historyBtns.forEach(btn => {
+            if (btn.getAttribute('data-lookback') === state.intradayLookback) {
+              btn.className = 'history-btn px-1.5 py-0.5 rounded text-sky-400 bg-[#1e293b] font-semibold transition-colors';
+            } else {
+              btn.className = 'history-btn px-1.5 py-0.5 rounded text-slate-400 hover:text-white transition-colors';
+            }
+          });
+        }
+      }
+
+      async function fetchActualIntradayCandles(timeframe) {
         const intervalMap = { '1m': 1, '5m': 5, '15m': 15, '1H': 60 };
         const mins = intervalMap[timeframe];
         if (!mins) return;
 
-        const url = `https://groww.in/v1/api/charting_service/v2/chart/exchange/NSE/segment/CASH/NIFTY/daily?intervalInMinutes=${mins}`;
+        // Request deep historical past intraday data:
+        // 1m: 14 days back (yields ~2,655 consecutive 1-minute bars across 8 trading sessions)
+        // 5m: 35 days back (yields ~1,460 consecutive 5-minute bars across 20 trading sessions)
+        // 15m: 60 days back (yields ~487 consecutive 15-minute bars across 20-30 sessions)
+        // 1H: 90 days back (yields ~136 consecutive 1-hour bars across 20-30 sessions)
+        const daysBackMap = { '1m': 14, '5m': 35, '15m': 60, '1H': 90 };
+        const daysBack = daysBackMap[timeframe] || 14;
+        const nowMs = Date.now();
+        const startMs = nowMs - (daysBack * 86400 * 1000);
+
+        const rangeUrl = `https://groww.in/v1/api/charting_service/v2/chart/exchange/NSE/segment/CASH/NIFTY?intervalInMinutes=${mins}&startTimeInMillis=${startMs}&endTimeInMillis=${nowMs}`;
+        const weeklyUrl = `https://groww.in/v1/api/charting_service/v2/chart/exchange/NSE/segment/CASH/NIFTY/weekly?intervalInMinutes=${mins}`;
+        const dailyUrl = `https://groww.in/v1/api/charting_service/v2/chart/exchange/NSE/segment/CASH/NIFTY/daily?intervalInMinutes=${mins}`;
+
+        if (els.historyStatsDot) {
+          els.historyStatsDot.className = 'w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping';
+          els.historyStatsLabel.textContent = `Fetching past ${timeframe}...`;
+        }
+
         try {
-          const data = await executeCorsFetch(url, 5000);
+          // 1. Try deep historical multi-day range first
+          let data = await executeCorsFetch(rangeUrl, 6500);
+
+          // 2. Fallback to weekly multi-day endpoint
+          if (!data || !Array.isArray(data.candles) || data.candles.length === 0) {
+            data = await executeCorsFetch(weeklyUrl, 5000);
+          }
+
+          // 3. Fallback to daily single-session endpoint
+          if (!data || !Array.isArray(data.candles) || data.candles.length === 0) {
+            data = await executeCorsFetch(dailyUrl, 4000);
+          }
+
           if (data && Array.isArray(data.candles) && data.candles.length > 0) {
             const formatted = data.candles.map(c => ({
               time: c[0],
@@ -1879,13 +2117,33 @@
               low: parseFloat(c[3]),
               close: parseFloat(c[4])
             }));
+
+            // Store full historical dataset for this timeframe
             state.actualCandles[timeframe] = formatted;
-            if (state.timeframe === timeframe && state.activeChartMode === 'index') {
+
+            // When deep 1m data is loaded, automatically pre-derive higher intervals if they are not yet populated
+            if (timeframe === '1m') {
+              if (!state.actualCandles['5m'] || state.actualCandles['5m'].length <= 75) {
+                state.actualCandles['5m'] = aggregate1mBars(formatted, 5);
+              }
+              if (!state.actualCandles['15m'] || state.actualCandles['15m'].length <= 25) {
+                state.actualCandles['15m'] = aggregate1mBars(formatted, 15);
+              }
+              if (!state.actualCandles['1H'] || state.actualCandles['1H'].length <= 7) {
+                state.actualCandles['1H'] = aggregate1mBars(formatted, 60);
+              }
+            }
+
+            updateHistoryStatsBadge();
+
+            if (state.timeframe === timeframe) {
               renderActiveChart();
             }
           }
         } catch (err) {
           console.warn(`Actual candle fetch (${timeframe}) warning:`, err);
+        } finally {
+          updateHistoryStatsBadge();
         }
       }
 
@@ -2168,6 +2426,7 @@
           btn.addEventListener('click', function () {
             const tf = this.getAttribute('data-tf');
             state.timeframe = tf;
+            updateHistoryControlsVisibility();
             renderActiveChart();
             if (['1m', '5m', '15m', '1H'].includes(tf)) {
               fetchActualIntradayCandles(tf);
@@ -2176,6 +2435,18 @@
             }
           });
         });
+
+        // Intraday Past History Depth Lookback Buttons (1D, 3D, 5D, 10D, Max)
+        if (els.historyBtns) {
+          els.historyBtns.forEach(btn => {
+            btn.addEventListener('click', function () {
+              const lookback = this.getAttribute('data-lookback');
+              state.intradayLookback = lookback;
+              renderActiveChart();
+              updateHistoryStatsBadge();
+            });
+          });
+        }
 
         // Quick Switcher inside Option Chart Context Bar
         els.btnSwitchCe.addEventListener('click', () => {
