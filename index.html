@@ -65,9 +65,20 @@
       background: #334155;
     }
 
+    /* Draggable Splitter States */
+    .resizer-dragging {
+      user-select: none !important;
+      cursor: col-resize !important;
+    }
+    .resizer-bar-active {
+      background-color: rgba(56, 189, 248, 0.4) !important;
+      border-color: #38bdf8 !important;
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.5) !important;
+    }
+
     /* ATM Strike Row Distinction */
     .atm-row-active {
-      background: rgba(56, 189, 248, 0.08) !important;
+      background: rgba(56, 189, 248, 0.09) !important;
       border-top: 1.5px solid #38bdf8 !important;
       border-bottom: 1.5px solid #38bdf8 !important;
     }
@@ -79,16 +90,16 @@
 
     /* ITM (In The Money) Soft Highlight */
     .itm-call-cell {
-      background-color: rgba(245, 158, 11, 0.04);
+      background-color: rgba(245, 158, 11, 0.05);
     }
     .itm-put-cell {
-      background-color: rgba(245, 158, 11, 0.04);
+      background-color: rgba(245, 158, 11, 0.05);
     }
 
     /* Active Charted Option Contract Highlight */
     .charted-contract-active {
       box-shadow: inset 0 0 0 1.5px #38bdf8;
-      background-color: rgba(56, 189, 248, 0.16) !important;
+      background-color: rgba(56, 189, 248, 0.18) !important;
     }
 
     /* Prevent mobile scroll conflicts with chart canvas */
@@ -105,351 +116,526 @@
     }
   </style>
 </head>
-<body class="bg-[#070b12] text-slate-200 font-sans antialiased h-screen flex flex-col overflow-hidden select-none">
+<body class="bg-[#070b12] text-slate-200 font-sans antialiased h-screen w-screen flex flex-col overflow-hidden select-none">
 
-  <!-- TOP HEADER BAR: Professional Financial Ticker & System Status -->
-  <header class="bg-[#0c1220] border-b border-[#1e293b] px-3.5 py-2 flex items-center justify-between gap-3 shrink-0 z-30">
-    <!-- Zone 1: Asset Branding & Market Status -->
-    <div class="flex items-center gap-3 shrink-0">
-      <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-500 via-indigo-600 to-cyan-500 flex items-center justify-center font-bold text-xs text-white tracking-wider shadow-md shadow-sky-500/10">
-          N50
-        </div>
-        <div class="flex flex-col">
-          <div class="flex items-center gap-1.5">
-            <span class="text-sm font-bold tracking-tight text-white font-mono">NIFTY 50</span>
-            <span class="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-slate-800 text-sky-400 border border-slate-700">NSE</span>
-          </div>
-          <span id="header-clock" class="text-[10px] text-slate-400 font-mono tracking-wide">IST Live</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Zone 2: Real Quantitative Metrics Bar (Desktop & Tablet) -->
-    <div class="hidden md:flex items-center gap-4 lg:gap-6 xl:gap-8 text-xs font-mono tabular-nums overflow-x-auto py-0.5">
-      <!-- Spot / Close Price -->
-      <div class="flex flex-col">
-        <span id="metric-spot-label" class="text-[10px] text-slate-400 uppercase tracking-wider font-sans font-medium">Spot Price</span>
-        <div class="flex items-baseline gap-1.5">
-          <span id="metric-spot" class="text-base font-bold text-white tracking-tight">--</span>
-          <span id="metric-change" class="text-xs font-semibold text-slate-400">--</span>
-        </div>
-      </div>
-
-      <div class="w-px h-6 bg-[#1e293b]"></div>
-
-      <!-- Session Range (Low / High) -->
-      <div class="flex flex-col">
-        <span class="text-[10px] text-slate-400 uppercase tracking-wider font-sans font-medium">Session Range</span>
-        <div class="flex items-center gap-1.5 text-xs">
-          <span class="text-rose-400 font-medium">L: <span id="metric-low">--</span></span>
-          <span class="text-slate-600">/</span>
-          <span class="text-emerald-400 font-medium">H: <span id="metric-high">--</span></span>
-        </div>
-      </div>
-
-      <div class="w-px h-6 bg-[#1e293b]"></div>
-
-      <!-- Put-Call Ratio (PCR) -->
-      <div class="flex flex-col">
-        <div class="flex items-center gap-1.5">
-          <span class="text-[10px] text-slate-400 uppercase tracking-wider font-sans font-medium">PCR (OI)</span>
-          <span id="metric-pcr-sentiment" class="text-[9px] px-1 rounded font-bold uppercase text-slate-300 bg-slate-800">--</span>
-        </div>
-        <span id="metric-pcr" class="text-sm font-bold text-sky-400">--</span>
-      </div>
-
-      <div class="w-px h-6 bg-[#1e293b]"></div>
-
-      <!-- Max Pain -->
-      <div class="flex flex-col">
-        <span class="text-[10px] text-slate-400 uppercase tracking-wider font-sans font-medium">Max Pain</span>
-        <span id="metric-maxpain" class="text-xs font-semibold text-amber-400">--</span>
-      </div>
-
-      <div class="w-px h-6 bg-[#1e293b]"></div>
-
-      <!-- Total Open Interest -->
-      <div class="flex flex-col">
-        <span class="text-[10px] text-slate-400 uppercase tracking-wider font-sans font-medium">Total OI (Lakhs)</span>
-        <div class="flex items-center gap-1.5 text-xs">
-          <span class="text-emerald-400">CE: <span id="metric-ce-oi">--</span></span>
-          <span class="text-slate-600">|</span>
-          <span class="text-rose-400">PE: <span id="metric-pe-oi">--</span></span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Zone 3: Global Responsive Layout Modes & Utility Controls -->
-    <div class="flex items-center gap-2 shrink-0">
-      <!-- Layout Switcher (Desktop: Split / Chart / Chain | Mobile: Toggle) -->
-      <div class="flex items-center bg-[#111827] border border-[#1e293b] rounded-lg p-0.5 text-xs font-mono">
-        <button id="view-mode-split" class="hidden lg:inline-flex items-center gap-1 px-2.5 py-1 rounded text-white bg-[#1e293b] font-medium transition-colors" title="Split View (Chart + Option Chain)">
-          <svg class="w-3.5 h-3.5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path></svg>
-          <span>Split</span>
-        </button>
-        <button id="view-mode-chart" class="inline-flex items-center gap-1 px-2.5 py-1 rounded text-slate-400 hover:text-white transition-colors" title="Maximized Chart Workspace">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
-          <span>Chart</span>
-        </button>
-        <button id="view-mode-chain" class="inline-flex items-center gap-1 px-2.5 py-1 rounded text-slate-400 hover:text-white transition-colors" title="Maximized Option Chain">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
-          <span>Chain</span>
-        </button>
-      </div>
-
-      <!-- Manual Refresh Button -->
-      <button id="btn-refresh" class="p-1.5 text-slate-400 hover:text-white bg-[#111827] hover:bg-[#1a2438] border border-[#1e293b] rounded-lg transition-colors" title="Refresh Live NSE Data">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-      </button>
-
-      <!-- Sound Toggle -->
-      <button id="btn-sound" class="p-1.5 text-slate-400 hover:text-white bg-[#111827] hover:bg-[#1a2438] border border-[#1e293b] rounded-lg transition-colors" title="Toggle Sound Feedback">
-        <svg id="sound-icon-off" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path></svg>
-        <svg id="sound-icon-on" class="w-4 h-4 hidden text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
-      </button>
-    </div>
-  </header>
-
-  <!-- MARKET STATUS BANNER -->
-  <div id="market-status-banner" class="bg-amber-950/40 border-b border-amber-800/40 px-3.5 py-1 text-xs font-mono flex items-center justify-between text-amber-300 shrink-0">
-    <div class="flex items-center gap-2 overflow-hidden">
-      <span id="market-status-dot" class="w-2 h-2 rounded-full bg-amber-400 shrink-0"></span>
-      <span id="market-status-headline" class="font-semibold truncate">MARKET CLOSED: OFFICIAL SETTLEMENT DATA</span>
-      <span class="text-slate-400 text-[11px] hidden sm:inline">| Zero simulation applied. Live ticks stream during trading hours (09:15 - 15:30 IST).</span>
-    </div>
-    <div id="market-status-right" class="text-[11px] text-amber-200/90 font-medium shrink-0 ml-2">
-      Official Close: 23,140.50
-    </div>
+  <!-- Hidden Legacy Metric Sinks for safe JS execution -->
+  <div class="hidden" aria-hidden="true">
+    <span id="metric-spot-label">Live Spot Price</span>
+    <span id="metric-high">--</span>
+    <span id="metric-low">--</span>
+    <span id="metric-ce-oi">--</span>
+    <span id="metric-pe-oi">--</span>
+    <span id="header-clock">IST Live</span>
+    <div id="market-status-banner"></div>
+    <span id="market-status-dot"></span>
+    <span id="market-status-headline"></span>
+    <span id="market-status-right"></span>
+    <span id="mobile-spot"></span>
+    <span id="mobile-change"></span>
+    <span id="mobile-pcr"></span>
+    <span id="mobile-range"></span>
   </div>
 
-  <!-- COMPACT MOBILE SUB-BAR (Under 768px only) -->
-  <div class="md:hidden bg-[#090e18] border-b border-[#1e293b] px-3 py-1.5 flex items-center justify-between text-xs font-mono shrink-0">
-    <div class="flex items-center gap-2">
-      <span class="text-slate-400">SPOT:</span>
-      <span id="mobile-spot" class="font-bold text-white">--</span>
-      <span id="mobile-change" class="text-slate-400">--</span>
-    </div>
-    <div class="flex items-center gap-3">
-      <span>PCR: <strong id="mobile-pcr" class="text-sky-400">--</strong></span>
-      <span>H/L: <span id="mobile-range" class="text-slate-300">--</span></span>
-    </div>
-  </div>
+  <!-- MAIN FULL-HEIGHT SPLIT WORKSPACE: Fluid Resizable Terminal Layout -->
+  <main id="main-workspace" class="flex-1 h-screen w-screen flex flex-col lg:flex-row overflow-hidden relative">
 
-  <!-- MAIN SPLIT WORKSPACE -->
-  <main id="main-workspace" class="flex-1 flex flex-col lg:flex-row overflow-hidden w-full relative">
-
-    <!-- PRIMARY CHART PANE: HOSTS BOTH INDEX & OPTION CONTRACT CANDLESTICKS IN-PLACE -->
-    <section id="pane-chart" class="w-full lg:w-[54%] h-full flex flex-col border-b lg:border-b-0 lg:border-r border-[#1e293b] bg-[#070b12] relative transition-all">
+    <!-- PRIMARY CHART PANE: DEFAULT 70% WIDTH FOR INSTITUTIONAL CANDLESTICKS -->
+    <section id="pane-chart" class="w-full lg:w-[70%] h-full flex flex-col border-b lg:border-b-0 border-[#1e293b] bg-[#070b12] relative transition-none">
       
-      <!-- Chart Main Toolbar -->
-      <div class="bg-[#0c1220] border-b border-[#1e293b] px-3 py-2 flex flex-wrap items-center justify-between gap-2 shrink-0 z-20 text-xs">
+      <!-- Chart Main Institutional Toolbar -->
+      <div class="bg-[#0c1220] border-b border-[#1e293b] px-3 py-1.5 flex items-center justify-between gap-2 shrink-0 z-20 text-xs">
         
-        <!-- Left: Active Chart Switcher Tabs (Index vs Option Contract) -->
-        <div class="flex items-center gap-1.5">
+        <!-- Left: Asset Branding & Spot Live Metric + Active Chart Switcher Tabs -->
+        <div class="flex items-center gap-2 shrink-0">
+          <!-- Asset Badge & Live Spot Price -->
+          <div class="flex items-center gap-1.5 bg-[#111827] border border-[#1e293b] rounded-lg px-2.5 py-1 font-mono">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="text-xs font-bold text-white tracking-tight">NIFTY 50</span>
+            <span id="metric-spot" class="text-xs font-bold text-emerald-400 tabular-nums">23,140.50</span>
+            <span id="metric-change" class="text-[10px] font-semibold text-emerald-400 tabular-nums">+85.20 (+0.37%)</span>
+          </div>
+
           <!-- Index Chart Tab -->
-          <button id="chart-tab-index" class="flex items-center gap-1.5 px-3 py-1 rounded-md font-mono text-xs font-semibold bg-sky-500/20 text-sky-400 border border-sky-500/40 transition-all shadow-sm">
+          <button id="chart-tab-index" class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-mono text-xs font-semibold bg-sky-500/20 text-sky-400 border border-sky-500/40 transition-all shadow-sm">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
-            <span>NIFTY 50 Index</span>
+            <span>Index</span>
           </button>
 
-          <!-- Active Option Contract Tab (Populated dynamically when clicking any strike) -->
+          <!-- Active Option Contract Tab -->
           <div id="chart-tab-option-wrapper" class="hidden items-center">
-            <button id="chart-tab-option" class="flex items-center gap-1.5 px-3 py-1 rounded-l-md font-mono text-xs font-semibold text-slate-400 hover:text-white bg-[#111827] border border-[#1e293b] transition-all">
+            <button id="chart-tab-option" class="flex items-center gap-1.5 px-2.5 py-1 rounded-l-lg font-mono text-xs font-semibold text-slate-300 hover:text-white bg-[#111827] border border-[#1e293b] transition-all">
               <span id="tab-option-badge" class="w-2 h-2 rounded-full bg-emerald-400"></span>
               <span id="tab-option-title">23150 CE</span>
-              <span id="tab-option-ltp" class="text-emerald-400 font-bold ml-1">₹116.70</span>
+              <span id="tab-option-ltp" class="text-emerald-400 font-bold ml-1">116.70</span>
             </button>
-            <button id="btn-close-option-tab" class="px-1.5 py-1 rounded-r-md bg-[#111827] hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 border-y border-r border-[#1e293b] transition-colors" title="Close Option Chart (Return to Index)">
+            <button id="btn-close-option-tab" class="px-2 py-1 rounded-r-lg bg-[#111827] hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 border-y border-r border-[#1e293b] transition-colors" title="Close Option Chart">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
           </div>
         </div>
 
-        <!-- Center: Timeframe Selectors & Intraday History Lookback Controls -->
-        <div class="flex items-center gap-2 flex-wrap">
-          <div class="flex items-center bg-[#111827] border border-[#1e293b] rounded-md p-0.5 font-mono text-xs">
-            <button class="tf-btn px-2 py-0.5 rounded text-sky-400 bg-[#1e293b] font-semibold transition-colors" data-tf="1m">1m</button>
-            <button class="tf-btn px-2 py-0.5 rounded text-slate-400 hover:text-white transition-colors" data-tf="5m">5m</button>
-            <button class="tf-btn px-2 py-0.5 rounded text-slate-400 hover:text-white transition-colors" data-tf="15m">15m</button>
-            <button class="tf-btn px-2 py-0.5 rounded text-slate-400 hover:text-white transition-colors" data-tf="1H">1H</button>
-            <button class="tf-btn px-2 py-0.5 rounded text-slate-400 hover:text-white transition-colors" data-tf="1D">1D</button>
-            <button id="tf-btn-1w" class="tf-btn px-2 py-0.5 rounded text-slate-400 hover:text-white transition-colors" data-tf="1W">1W</button>
+        <!-- Center: Timeframes, Indicators Menu & History Lookback -->
+        <div class="flex items-center gap-2 overflow-x-auto py-0.5">
+          <!-- Timeframe selector -->
+          <div class="flex items-center bg-[#111827] border border-[#1e293b] rounded-lg p-0.5 font-mono text-xs shrink-0">
+            <button class="tf-btn px-2 py-0.5 rounded-md text-sky-400 bg-[#1e293b] font-semibold transition-colors" data-tf="1m">1m</button>
+            <button class="tf-btn px-2 py-0.5 rounded-md text-slate-400 hover:text-white transition-colors" data-tf="5m">5m</button>
+            <button class="tf-btn px-2 py-0.5 rounded-md text-slate-400 hover:text-white transition-colors" data-tf="15m">15m</button>
+            <button class="tf-btn px-2 py-0.5 rounded-md text-slate-400 hover:text-white transition-colors" data-tf="1H">1H</button>
+            <button class="tf-btn px-2 py-0.5 rounded-md text-slate-400 hover:text-white transition-colors" data-tf="1D">1D</button>
+            <button id="tf-btn-1w" class="tf-btn px-2 py-0.5 rounded-md text-slate-400 hover:text-white transition-colors" data-tf="1W">1W</button>
           </div>
 
-          <!-- Intraday Past History Depth Selector (1D, 3D, 5D, 10D, Max) -->
-          <div id="intraday-history-controls" class="flex items-center bg-[#111827] border border-[#1e293b] rounded-md p-0.5 font-mono text-[11px]">
-            <span class="text-[10px] text-slate-400 px-1.5 font-sans uppercase font-medium hidden sm:inline">Past:</span>
-            <button class="history-btn px-1.5 py-0.5 rounded text-slate-400 hover:text-white transition-colors" data-lookback="1D" title="Latest single intraday session (375 1m bars)">1D</button>
-            <button class="history-btn px-1.5 py-0.5 rounded text-slate-400 hover:text-white transition-colors" data-lookback="3D" title="Past 3 trading sessions (~1,125 1m bars)">3D</button>
-            <button class="history-btn px-1.5 py-0.5 rounded text-sky-400 bg-[#1e293b] font-semibold transition-colors" data-lookback="5D" title="Past 5 trading sessions (~1,875 1m bars / 1 week)">5D</button>
-            <button class="history-btn px-1.5 py-0.5 rounded text-slate-400 hover:text-white transition-colors" data-lookback="10D" title="Past 10 trading sessions (~2,400+ 1m bars)">10D</button>
-            <button class="history-btn px-1.5 py-0.5 rounded text-slate-400 hover:text-white transition-colors" data-lookback="max" title="Maximum available past intraday data (up to 2,655+ 1m bars / 1,460 5m bars)">Max</button>
+          <!-- Past History Depth Selector (1D, 3D, 5D, 10D, Max) -->
+          <div id="intraday-history-controls" class="hidden md:flex items-center bg-[#111827] border border-[#1e293b] rounded-lg p-0.5 font-mono text-[11px] shrink-0">
+            <span class="text-[10px] text-slate-500 px-1.5 font-sans uppercase font-medium">Past:</span>
+            <button class="history-btn px-1.5 py-0.5 rounded text-slate-400 hover:text-white transition-colors" data-lookback="1D" title="1 Day">1D</button>
+            <button class="history-btn px-1.5 py-0.5 rounded text-slate-400 hover:text-white transition-colors" data-lookback="3D" title="3 Days">3D</button>
+            <button class="history-btn px-1.5 py-0.5 rounded text-sky-400 bg-[#1e293b] font-semibold transition-colors" data-lookback="5D" title="5 Days">5D</button>
+            <button class="history-btn px-1.5 py-0.5 rounded text-slate-400 hover:text-white transition-colors" data-lookback="10D" title="10 Days">10D</button>
+            <button class="history-btn px-1.5 py-0.5 rounded text-slate-400 hover:text-white transition-colors" data-lookback="max" title="Max available">Max</button>
           </div>
 
-          <!-- History Stats Indicator -->
-          <div id="history-stats-pill" class="hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#111827] border border-[#1e293b] text-[10px] font-mono text-slate-300" title="Historical intraday bars and trading days currently available">
-            <span id="history-stats-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span id="history-stats-label">Past data: Loading...</span>
-          </div>
+          <!-- INDICATOR TOGGLE BUTTON & DROPDOWN POPOVER -->
+          <div class="relative shrink-0">
+            <button id="btn-indicators-menu" class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-semibold bg-[#111827] hover:bg-[#1e293b] text-sky-400 border border-sky-500/40 transition-colors shadow-sm" title="Configure Technical Indicators">
+              <svg class="w-3.5 h-3.5 text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+              <span>Indicators</span>
+              <span id="indicator-active-badge" class="px-1.5 py-0.2 rounded bg-sky-500/20 text-[9px] text-sky-300 font-bold border border-sky-500/30">DWM</span>
+            </button>
+            
+            <!-- Indicators Popover Dropdown -->
+            <div id="indicators-popover" class="hidden absolute top-full left-0 mt-2 w-88 sm:w-[440px] max-h-[85vh] overflow-y-auto bg-[#0c1220]/98 backdrop-blur-md border border-[#1e293b] rounded-xl shadow-2xl z-50 p-4 text-xs font-sans text-slate-200">
+              <div class="flex items-center justify-between border-b border-[#1e293b] pb-2.5 mb-3">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+                  <h3 class="font-bold text-white font-mono uppercase tracking-wide text-xs">Technical Indicators</h3>
+                </div>
+                <button id="btn-close-indicators" class="text-slate-400 hover:text-white p-1 rounded hover:bg-[#1e293b]">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+              </div>
 
-          <!-- Dynamic Crosshair Candle Legend -->
-          <div id="chart-legend" class="hidden 2xl:flex items-center gap-2 font-mono text-[11px] tabular-nums text-slate-400">
-            <span id="legend-time" class="text-sky-300 font-semibold mr-0.5">--</span>
-            <span>O: <strong id="legend-o" class="text-slate-200">--</strong></span>
-            <span>H: <strong id="legend-h" class="text-emerald-400">--</strong></span>
-            <span>L: <strong id="legend-l" class="text-rose-400">--</strong></span>
-            <span>C: <strong id="legend-c" class="text-slate-200">--</strong></span>
-            <span id="legend-chg" class="font-semibold text-slate-300">--</span>
+              <!-- Indicator 1: Auto DayWeekMonth Levels (DWM) by JustUncleL -->
+              <div class="bg-[#111827] border border-[#1e293b] rounded-lg p-3 mb-2.5">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center gap-2">
+                    <label class="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" id="toggle-dwmfibs" class="sr-only peer" checked>
+                      <div class="w-8 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-sky-500"></div>
+                    </label>
+                    <span class="font-bold text-white font-mono text-xs">Auto DWM Levels</span>
+                  </div>
+                  <span class="text-[10px] font-mono text-amber-400 bg-amber-950/50 border border-amber-800/40 px-1.5 py-0.5 rounded">JustUncleL</span>
+                </div>
+
+                <!-- Display Mode: The Lines vs Fib Levels -->
+                <div class="bg-[#0b1120] border border-[#1e293b]/70 rounded-md p-2 mb-2 flex flex-col gap-1.5 text-[11px] font-mono">
+                  <div class="flex items-center justify-between">
+                    <label class="flex items-center gap-1.5 cursor-pointer text-emerald-400 font-semibold hover:text-emerald-300" title="Plot structural lines: High, Low, Pivot, Close">
+                      <input type="checkbox" id="dwmfibs-lines" checked class="rounded border-slate-700 bg-slate-800 text-emerald-500 focus:ring-0">
+                      <span>The Lines (High / Low / Pivot)</span>
+                    </label>
+                    <span class="text-[9px] text-emerald-400 bg-emerald-950/50 border border-emerald-800/40 px-1.5 rounded">Active</span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <label class="flex items-center gap-1.5 cursor-pointer text-slate-400 hover:text-slate-200" title="Plot Fibonacci retracement ratios (0.25, 0.382, 0.50, 0.618, etc.)">
+                      <input type="checkbox" id="dwmfibs-fibs" class="rounded border-slate-700 bg-slate-800 text-sky-500 focus:ring-0">
+                      <span>Fib Levels (Ratios)</span>
+                    </label>
+                    <span class="text-[9px] text-slate-500 bg-slate-800/60 px-1.5 rounded">Off</span>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-[11px] font-mono text-slate-300 pl-1 mb-2.5">
+                  <label class="flex items-center gap-1.5 cursor-pointer hover:text-white">
+                    <input type="checkbox" id="dwmfibs-weekly" checked class="rounded border-slate-700 bg-slate-800 text-sky-500 focus:ring-0">
+                    <span>Weekly (W)</span>
+                  </label>
+                  <label class="flex items-center gap-1.5 cursor-pointer hover:text-white">
+                    <input type="checkbox" id="dwmfibs-daily" checked class="rounded border-slate-700 bg-slate-800 text-sky-500 focus:ring-0">
+                    <span>Daily (D)</span>
+                  </label>
+                  <label class="flex items-center gap-1.5 cursor-pointer hover:text-white">
+                    <input type="checkbox" id="dwmfibs-monthly" class="rounded border-slate-700 bg-slate-800 text-sky-500 focus:ring-0">
+                    <span>Monthly (M)</span>
+                  </label>
+                  <label class="flex items-center gap-1.5 cursor-pointer hover:text-white">
+                    <input type="checkbox" id="dwmfibs-ext" class="rounded border-slate-700 bg-slate-800 text-sky-500 focus:ring-0">
+                    <span>Extended Levels</span>
+                  </label>
+                </div>
+
+                <!-- 5-Day Range Only (Default: Active) -->
+                <div class="pt-2 border-t border-[#1e293b]/70 flex items-center justify-between text-[11px] font-mono">
+                  <span class="text-slate-300">Lookback Span:</span>
+                  <label class="flex items-center gap-1.5 cursor-pointer hover:text-white">
+                    <input type="checkbox" id="dwmfibs-five-days" checked class="rounded border-slate-700 bg-slate-800 text-sky-500 focus:ring-0">
+                    <span class="text-sky-400 font-semibold">5 Days Only</span>
+                  </label>
+                </div>
+
+                <!-- Text Labels Toggle (Default: OFF per user request) -->
+                <div class="pt-1.5 flex items-center justify-between text-[11px] font-mono">
+                  <span class="text-slate-300">Price Labels:</span>
+                  <label class="flex items-center gap-1.5 cursor-pointer hover:text-white">
+                    <input type="checkbox" id="dwmfibs-labels" class="rounded border-slate-700 bg-slate-800 text-sky-500 focus:ring-0">
+                    <span class="text-slate-400">Show Text Labels</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Indicator 2: Liquidity Sweep Hunter [Refactored] by ravishankerannem -->
+              <div class="bg-[#111827] border border-[#1e293b] rounded-lg p-3">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center gap-2">
+                    <label class="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" id="toggle-lh" class="sr-only peer" checked>
+                      <div class="w-8 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                    <span class="font-bold text-white font-mono text-xs">Liquidity Sweep Hunter</span>
+                  </div>
+                  <span class="text-[10px] font-mono text-sky-400 bg-sky-950/50 border border-sky-800/40 px-1.5 py-0.5 rounded">Pine Script v6</span>
+                </div>
+
+                <!-- Section: Inputs (Levels) -->
+                <div class="mb-2.5">
+                  <div class="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-semibold mb-1 flex items-center justify-between">
+                    <span>Levels & Sensitivity</span>
+                    <span class="text-[9px] text-slate-500">ta.pivot / vol Δ%</span>
+                  </div>
+                  <div class="grid grid-cols-2 gap-2 text-[11px] font-mono text-slate-300">
+                    <div class="flex items-center justify-between bg-[#0b1120] border border-[#1e293b]/70 rounded px-2 py-1">
+                      <span class="text-slate-400">Pivot Length:</span>
+                      <select id="lh-pivot-length" class="bg-[#111827] text-white border border-slate-700 rounded px-1.5 py-0.5 text-[11px] focus:outline-none">
+                        <option value="1" selected>1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="5">5</option>
+                        <option value="10">10</option>
+                      </select>
+                    </div>
+                    <div class="flex items-center justify-between bg-[#0b1120] border border-[#1e293b]/70 rounded px-2 py-1">
+                      <span class="text-slate-400">Vol Filter:</span>
+                      <select id="lh-vol-filter" class="bg-[#111827] text-white border border-slate-700 rounded px-1.5 py-0.5 text-[11px] focus:outline-none">
+                        <option value="0">0%</option>
+                        <option value="0.2">0.2%</option>
+                        <option value="0.5" selected>0.5%</option>
+                        <option value="1.0">1.0%</option>
+                        <option value="2.0">2.0%</option>
+                        <option value="5.0">5.0%</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Section: Dynamic Intensity (Volume-Based Transparency & Width) -->
+                <div class="mb-2.5 bg-[#0b1120] border border-[#1e293b]/70 rounded-md p-2 flex flex-col gap-2 text-[11px] font-mono">
+                  <div class="flex items-center justify-between text-[10px] uppercase font-semibold text-slate-300 border-b border-slate-800/80 pb-1">
+                    <span class="text-sky-400">Dynamic Volume Intensity</span>
+                    <span class="text-slate-500">Auto Scaled</span>
+                  </div>
+
+                  <!-- Max Line Width (1 to 15, default 10) -->
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="text-slate-400 shrink-0">Max Line Width:</span>
+                    <div class="flex items-center gap-2 flex-1 justify-end">
+                      <input type="range" id="lh-line-width-max" min="1" max="15" value="10" class="w-24 accent-sky-500 cursor-pointer">
+                      <span id="lh-line-width-max-val" class="w-8 text-right font-bold text-sky-400 tabular-nums">10px</span>
+                    </div>
+                  </div>
+
+                  <!-- Min Transparency (High Volume) (0 to 100%, default 0) -->
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="text-slate-400 shrink-0" title="Transparency when volume delta is high (0 = 100% Solid)">Min Transp (High Vol):</span>
+                    <div class="flex items-center gap-2 flex-1 justify-end">
+                      <input type="range" id="lh-transp-intense" min="0" max="100" value="0" class="w-24 accent-sky-500 cursor-pointer">
+                      <span id="lh-transp-intense-val" class="w-8 text-right font-bold text-emerald-400 tabular-nums">0%</span>
+                    </div>
+                  </div>
+
+                  <!-- Max Transparency (Low Volume) (0 to 100%, default 80) -->
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="text-slate-400 shrink-0" title="Transparency when volume delta is low (80 = Faded)">Max Transp (Low Vol):</span>
+                    <div class="flex items-center gap-2 flex-1 justify-end">
+                      <input type="range" id="lh-transp-faded" min="0" max="100" value="80" class="w-24 accent-sky-500 cursor-pointer">
+                      <span id="lh-transp-faded-val" class="w-8 text-right font-bold text-slate-400 tabular-nums">80%</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Section: Visual Settings (Colors) -->
+                <div class="mb-2.5 grid grid-cols-2 gap-2 text-[11px] font-mono text-slate-300">
+                  <div class="flex items-center justify-between bg-[#0b1120] border border-[#1e293b]/70 rounded px-2 py-1">
+                    <span class="text-slate-400">Support:</span>
+                    <div class="flex items-center gap-1.5">
+                      <input type="color" id="lh-color-support" value="#0000ff" class="w-5 h-5 rounded cursor-pointer border-0 bg-transparent">
+                      <span class="text-[10px] text-blue-400 font-bold">Blue</span>
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between bg-[#0b1120] border border-[#1e293b]/70 rounded px-2 py-1">
+                    <span class="text-slate-400">Resistance:</span>
+                    <div class="flex items-center gap-1.5">
+                      <input type="color" id="lh-color-resistance" value="#ff00ff" class="w-5 h-5 rounded cursor-pointer border-0 bg-transparent">
+                      <span class="text-[10px] text-fuchsia-400 font-bold">Magenta</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Section: Display & Execution Toggles -->
+                <div class="pt-2 border-t border-[#1e293b]/70 flex flex-col gap-1.5 text-[11px] font-mono">
+                  <div class="flex items-center justify-between">
+                    <label class="flex items-center gap-1.5 cursor-pointer text-slate-200 hover:text-white" title="Draw horizontal support & resistance liquidity levels with volume intensity">
+                      <input type="checkbox" id="lh-show-lines" checked class="rounded border-slate-700 bg-slate-800 text-blue-500 focus:ring-0">
+                      <span>Liquidity Lines (Support & Resistance)</span>
+                    </label>
+                    <span class="text-[9px] text-emerald-400 bg-emerald-950/50 border border-emerald-800/40 px-1 rounded">On</span>
+                  </div>
+
+                  <div class="flex items-center justify-between">
+                    <label class="flex items-center gap-1.5 cursor-pointer text-slate-300 hover:text-white" title="Extend active unbroken lines 25 bars into the right margin (Pine Script: bar_index + 25)">
+                      <input type="checkbox" id="lh-extend-bars" checked class="rounded border-slate-700 bg-slate-800 text-sky-500 focus:ring-0">
+                      <span>Project Lines Forward (+25 Bars)</span>
+                    </label>
+                    <span class="text-[9px] text-sky-400 bg-sky-950/40 px-1 rounded">+25</span>
+                  </div>
+
+                  <div class="flex items-center justify-between">
+                    <label class="flex items-center gap-1.5 cursor-pointer text-slate-300 hover:text-white" title="Display check marks when price sweeps a liquidity level and closes back inside">
+                      <input type="checkbox" id="lh-show-sweeps" class="rounded border-slate-700 bg-slate-800 text-sky-500 focus:ring-0">
+                      <span>Show Sweep Marks (<strong class="text-sky-400 font-bold">✔</strong>)</span>
+                    </label>
+                    <span class="text-[9px] text-slate-500 bg-slate-800/60 px-1.5 rounded">Default Off</span>
+                  </div>
+
+                  <div class="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
+                    <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-200" title="Hide historical broken lines and display only open, active liquidity pools">
+                      <input type="checkbox" id="lh-active-only" class="rounded border-slate-700 bg-slate-800 text-sky-500 focus:ring-0">
+                      <span>Active Levels Only (Hide Broken)</span>
+                    </label>
+                    <label class="flex items-center gap-1 cursor-pointer hover:text-slate-200" title="Show level labels with Volume Delta % on price scale">
+                      <input type="checkbox" id="lh-show-labels" class="rounded border-slate-700 bg-slate-800 text-sky-500 focus:ring-0">
+                      <span>Level Labels</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- Right: Vertical Scale & Fitting Tools -->
+        <!-- Right: Ratio Presets, Layout Mode, Scale & Utilities -->
         <div class="flex items-center gap-1.5 shrink-0">
-          <div class="flex items-center bg-[#111827] border border-[#1e293b] rounded-md p-0.5 font-mono text-xs">
-            <button id="btn-zoom-y-in" class="px-2 py-0.5 text-slate-300 hover:text-white hover:bg-[#1e293b] rounded transition-colors font-bold" title="Contract vertical price span by 20% (Zoom In Y-Axis)">
-              Y +
+          <!-- Split Ratio Presets -->
+          <div id="split-ratio-controls" class="hidden xl:flex items-center bg-[#111827] border border-[#1e293b] rounded-lg p-0.5 text-[11px] font-mono">
+            <span class="text-[9px] text-slate-500 uppercase px-1.5 font-sans">Ratio:</span>
+            <button class="ratio-btn px-1.5 py-0.5 rounded text-sky-400 bg-[#1e293b] font-semibold transition-colors" data-ratio="70" title="70% Chart / 30% Option Chain">70:30</button>
+            <button class="ratio-btn px-1.5 py-0.5 rounded text-slate-400 hover:text-white transition-colors" data-ratio="50" title="50% Chart / 50% Option Chain">50:50</button>
+          </div>
+
+          <!-- View Switcher -->
+          <div class="flex items-center bg-[#111827] border border-[#1e293b] rounded-lg p-0.5 text-xs font-mono">
+            <button id="view-mode-split" class="hidden lg:inline-flex items-center px-2 py-0.5 rounded text-white bg-[#1e293b] font-medium transition-colors" title="Split View">
+              Split
             </button>
-            <div class="w-px h-3.5 bg-[#1e293b] mx-0.5"></div>
-            <button id="btn-zoom-y-out" class="px-2 py-0.5 text-slate-300 hover:text-white hover:bg-[#1e293b] rounded transition-colors font-bold" title="Expand vertical price span by 25% (Zoom Out Y-Axis)">
-              Y −
+            <button id="view-mode-chart" class="inline-flex items-center px-2 py-0.5 rounded text-slate-400 hover:text-white transition-colors" title="Chart Only">
+              Chart
             </button>
-            <div class="w-px h-3.5 bg-[#1e293b] mx-0.5"></div>
-            <button id="btn-zoom-reset" class="px-2 py-0.5 text-slate-300 hover:text-white hover:bg-[#1e293b] rounded transition-colors" title="Reset vertical scale">
-              Reset
+            <button id="view-mode-chain" class="inline-flex items-center px-2 py-0.5 rounded text-slate-400 hover:text-white transition-colors" title="Option Chain Only">
+              Chain
             </button>
           </div>
 
-          <button id="btn-chart-fit" class="px-2 py-1 text-[11px] font-mono text-slate-300 hover:text-white bg-[#111827] hover:bg-[#1e293b] border border-[#1e293b] rounded-md transition-colors" title="Fit candlestick series to view">
+          <button id="btn-chart-fit" class="hidden sm:inline-flex items-center px-2 py-0.5 text-[11px] font-mono text-slate-300 hover:text-white bg-[#111827] hover:bg-[#1e293b] border border-[#1e293b] rounded-lg transition-colors" title="Fit Bars">
             Fit
+          </button>
+
+          <!-- Refresh -->
+          <button id="btn-refresh" class="p-1 text-slate-400 hover:text-white bg-[#111827] hover:bg-[#1a2438] border border-[#1e293b] rounded-lg transition-colors" title="Refresh Live Data">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+          </button>
+
+          <!-- Sound -->
+          <button id="btn-sound" class="p-1 text-slate-400 hover:text-white bg-[#111827] hover:bg-[#1a2438] border border-[#1e293b] rounded-lg transition-colors" title="Toggle Sound">
+            <svg id="sound-icon-off" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path></svg>
+            <svg id="sound-icon-on" class="w-3.5 h-3.5 hidden text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
+          </button>
+
+          <!-- Quick Maximize / Fullscreen Chart Workspace -->
+          <button id="btn-maximize-chart" class="p-1 text-slate-400 hover:text-white bg-[#111827] hover:bg-[#1e293b] border border-[#1e293b] rounded-lg transition-colors" title="Maximize Chart (100% width)">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
           </button>
         </div>
       </div>
 
-      <!-- OPTION CONTRACT CONTEXT & GREEKS RIBBON (Visible ONLY when an option chart is active) -->
-      <div id="option-chart-context-bar" class="hidden bg-[#090e18] border-b border-[#1e293b] px-3.5 py-2 flex-col gap-2 shrink-0 z-10 transition-all">
+      <!-- OPTION CONTRACT CONTEXT & GREEKS RIBBON: Sleek single-strip layout without nested cards -->
+      <div id="option-chart-context-bar" class="hidden bg-[#090e18] border-b border-[#1e293b] px-3.5 py-1.5 flex-col gap-1.5 shrink-0 z-10 transition-all">
         <div class="flex flex-wrap items-center justify-between gap-2.5">
           <!-- Contract Identity & Change -->
           <div class="flex items-center gap-2.5">
-            <span id="opt-context-title" class="text-sm font-bold text-white font-mono">NIFTY 29-SEP-2026 23150 CE</span>
-            <span id="opt-context-badge" class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">CALL (CE)</span>
-            <span class="text-xs font-mono text-slate-400">LTP: <strong id="opt-context-ltp" class="text-emerald-400 text-sm">₹116.70</strong></span>
+            <span id="opt-context-title" class="text-xs font-bold text-white font-mono tracking-tight">NIFTY 29-SEP-2026 23150 CE</span>
+            <span id="opt-context-badge" class="px-1.5 py-0.2 rounded text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">CALL (CE)</span>
+            <span class="text-xs font-mono text-slate-400">LTP: <strong id="opt-context-ltp" class="text-emerald-400">116.70</strong></span>
             <span id="opt-context-chg" class="text-xs font-semibold font-mono text-emerald-400">+18.40 (+18.7%)</span>
           </div>
 
           <!-- Quick Contract Adjusters (CE/PE Toggle + Strike Dropdown) -->
           <div class="flex items-center gap-2">
             <div class="flex items-center bg-[#111827] border border-[#1e293b] rounded p-0.5 font-mono text-xs">
-              <button id="btn-switch-ce" class="px-2.5 py-0.5 rounded font-bold text-emerald-400 bg-[#1e293b] transition-colors">CE</button>
-              <button id="btn-switch-pe" class="px-2.5 py-0.5 rounded font-bold text-slate-400 hover:text-rose-400 transition-colors">PE</button>
+              <button id="btn-switch-ce" class="px-2 py-0.5 rounded font-bold text-emerald-400 bg-[#1e293b] transition-colors">CE</button>
+              <button id="btn-switch-pe" class="px-2 py-0.5 rounded font-bold text-slate-400 hover:text-rose-400 transition-colors">PE</button>
             </div>
 
-            <select id="select-active-strike" class="text-xs font-mono px-2 py-1 rounded bg-[#111827] text-white border border-[#1e293b] focus:outline-none focus:border-sky-500 cursor-pointer">
+            <select id="select-active-strike" class="text-xs font-mono px-2 py-0.5 rounded bg-[#111827] text-white border border-[#1e293b] focus:outline-none focus:border-sky-500 cursor-pointer">
               <!-- Populated dynamically with strikes -->
             </select>
           </div>
         </div>
 
-        <!-- Greeks Analytics Ribbon -->
-        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2 text-xs font-mono tabular-nums pt-1 border-t border-[#1e293b]/60">
-          <div class="flex flex-col bg-[#0c1220] border border-[#1e293b] rounded px-2 py-1">
-            <span class="text-[10px] text-slate-400 font-sans uppercase">Delta (Δ)</span>
-            <span id="greek-delta" class="text-xs font-bold text-sky-400">--</span>
+        <!-- Greeks Analytics Ribbon: Clean, unboxed horizontal telemetry row -->
+        <div class="flex items-center gap-3 md:gap-5 text-[11px] font-mono tabular-nums overflow-x-auto py-0.5 border-t border-[#1e293b]/60">
+          <div class="flex items-baseline gap-1 shrink-0">
+            <span class="text-[10px] text-slate-500 uppercase font-sans">Delta:</span>
+            <span id="greek-delta" class="font-bold text-sky-400">--</span>
           </div>
-          <div class="flex flex-col bg-[#0c1220] border border-[#1e293b] rounded px-2 py-1">
-            <span class="text-[10px] text-slate-400 font-sans uppercase">Gamma (Γ)</span>
-            <span id="greek-gamma" class="text-xs font-bold text-amber-400">--</span>
+          <span class="text-slate-700">·</span>
+          <div class="flex items-baseline gap-1 shrink-0">
+            <span class="text-[10px] text-slate-500 uppercase font-sans">Gamma:</span>
+            <span id="greek-gamma" class="font-bold text-amber-400">--</span>
           </div>
-          <div class="flex flex-col bg-[#0c1220] border border-[#1e293b] rounded px-2 py-1">
-            <span class="text-[10px] text-slate-400 font-sans uppercase">Theta (Θ/d)</span>
-            <span id="greek-theta" class="text-xs font-bold text-rose-400">--</span>
+          <span class="text-slate-700">·</span>
+          <div class="flex items-baseline gap-1 shrink-0">
+            <span class="text-[10px] text-slate-500 uppercase font-sans">Theta:</span>
+            <span id="greek-theta" class="font-bold text-rose-400">--</span>
           </div>
-          <div class="flex flex-col bg-[#0c1220] border border-[#1e293b] rounded px-2 py-1">
-            <span class="text-[10px] text-slate-400 font-sans uppercase">Vega (ν)</span>
-            <span id="greek-vega" class="text-xs font-bold text-purple-400">--</span>
+          <span class="text-slate-700">·</span>
+          <div class="flex items-baseline gap-1 shrink-0">
+            <span class="text-[10px] text-slate-500 uppercase font-sans">Vega:</span>
+            <span id="greek-vega" class="font-bold text-purple-400">--</span>
           </div>
-          <div class="flex flex-col bg-[#0c1220] border border-[#1e293b] rounded px-2 py-1">
-            <span class="text-[10px] text-slate-400 font-sans uppercase">IV</span>
-            <span id="greek-iv" class="text-xs font-bold text-slate-200">13.5%</span>
+          <span class="text-slate-700">·</span>
+          <div class="flex items-baseline gap-1 shrink-0">
+            <span class="text-[10px] text-slate-500 uppercase font-sans">IV:</span>
+            <span id="greek-iv" class="font-bold text-slate-200">13.5%</span>
           </div>
-          <div class="flex flex-col bg-[#0c1220] border border-[#1e293b] rounded px-2 py-1">
-            <span class="text-[10px] text-slate-400 font-sans uppercase">Intrinsic</span>
-            <span id="greek-intrinsic" class="text-xs font-bold text-emerald-400">₹0.00</span>
+          <span class="text-slate-700">·</span>
+          <div class="flex items-baseline gap-1 shrink-0">
+            <span class="text-[10px] text-slate-500 uppercase font-sans">Intrinsic:</span>
+            <span id="greek-intrinsic" class="font-bold text-emerald-400">0.00</span>
           </div>
-          <div class="flex flex-col bg-[#0c1220] border border-[#1e293b] rounded px-2 py-1">
-            <span class="text-[10px] text-slate-400 font-sans uppercase">Extrinsic</span>
-            <span id="greek-extrinsic" class="text-xs font-bold text-slate-200">--</span>
+          <span class="text-slate-700">·</span>
+          <div class="flex items-baseline gap-1 shrink-0">
+            <span class="text-[10px] text-slate-500 uppercase font-sans">Extrinsic:</span>
+            <span id="greek-extrinsic" class="font-bold text-slate-200">--</span>
           </div>
         </div>
       </div>
 
-      <!-- Unified Chart Canvas Container -->
-      <div id="chart-canvas-container" class="flex-1 w-full h-full relative cursor-crosshair">
-        <!-- Interactive Watermark -->
-        <div class="absolute bottom-4 left-4 pointer-events-none z-0 opacity-15 flex flex-col font-mono">
-          <span id="chart-watermark-title" class="text-3xl font-extrabold tracking-tighter text-slate-400">NIFTY 50</span>
-          <span id="chart-watermark-subtitle" class="text-xs tracking-widest text-slate-500">OFFICIAL CANDLESTICKS</span>
+      <!-- Unified Chart Canvas Container with Native HUD Overlay -->
+      <div id="chart-canvas-container" class="flex-1 w-full h-full relative cursor-crosshair overflow-hidden">
+        <!-- Sleek HUD Telemetry Overlay (TradingView Native Style) -->
+        <div id="chart-floating-hud" class="absolute top-2.5 left-3 z-10 pointer-events-none flex flex-wrap items-center gap-2 bg-[#090e18]/85 backdrop-blur-md border border-[#1e293b]/70 rounded-md px-2.5 py-1 text-[11px] font-mono tabular-nums text-slate-300 shadow-md">
+          <span id="hud-symbol" class="font-bold text-white tracking-tight mr-0.5">NIFTY 50</span>
+          <span id="legend-time" class="text-sky-300 font-medium mr-1 text-[10px]">--</span>
+          <span>O: <strong id="legend-o" class="text-slate-100">--</strong></span>
+          <span>H: <strong id="legend-h" class="text-emerald-400">--</strong></span>
+          <span>L: <strong id="legend-l" class="text-rose-400">--</strong></span>
+          <span>C: <strong id="legend-c" class="text-slate-100">--</strong></span>
+          <span id="legend-chg" class="font-semibold text-slate-300">--</span>
+        </div>
+
+        <!-- Watermark hidden to delete background symbols -->
+        <div class="hidden">
+          <span id="chart-watermark-title">NIFTY 50</span>
+          <span id="chart-watermark-subtitle">OFFICIAL CANDLESTICKS</span>
         </div>
       </div>
     </section>
 
-    <!-- OPTION CHAIN PANE (F&O ANALYTICS & DIRECT CONTRACT CHARTING) -->
-    <section id="pane-chain" class="w-full lg:w-[46%] h-full flex flex-col bg-[#070b12] overflow-hidden transition-all">
+    <!-- INTERACTIVE DRAGGABLE RESIZER BAR (Adjust Chart vs Chain Ratio on the Fly) -->
+    <div id="workspace-resizer" class="hidden lg:flex items-center justify-center w-2.5 hover:w-3 bg-[#0a0f1d] hover:bg-sky-500/20 active:bg-sky-500/40 cursor-col-resize select-none border-x border-[#1e293b] transition-all group z-30 shrink-0 relative" title="Drag to adjust Chart vs Option Chain width (Double-click to reset 70:30)">
+      <!-- Visual grip indicator -->
+      <div class="flex flex-col items-center gap-1.5 opacity-40 group-hover:opacity-100 transition-opacity pointer-events-none">
+        <div class="w-1 h-1 bg-slate-400 group-hover:bg-sky-400 rounded-full"></div>
+        <div class="w-1 h-1 bg-slate-400 group-hover:bg-sky-400 rounded-full"></div>
+        <div class="w-1 h-1 bg-slate-400 group-hover:bg-sky-400 rounded-full"></div>
+        <div class="w-1 h-1 bg-slate-400 group-hover:bg-sky-400 rounded-full"></div>
+      </div>
+      <!-- Floating drag ratio tooltip -->
+      <div id="resizer-tooltip" class="hidden absolute top-1/2 -translate-y-1/2 -left-24 pointer-events-none z-50 bg-[#0c1220]/95 backdrop-blur border border-sky-500/70 shadow-2xl rounded-md px-2.5 py-1 text-xs font-mono font-bold text-sky-300 whitespace-nowrap">
+        70% Chart · 30% Chain
+      </div>
+    </div>
+
+    <!-- OPTION CHAIN PANE: DEFAULT 30% WIDTH (CONCISE, SLEEK F&O TABLE) -->
+    <section id="pane-chain" class="w-full lg:w-[30%] h-full flex flex-col bg-[#070b12] overflow-hidden transition-none">
       
-      <!-- Option Chain Header & Filter Controls -->
-      <div class="bg-[#0c1220] border-b border-[#1e293b] px-3 py-2 flex flex-wrap items-center justify-between gap-2 shrink-0 z-10">
-        <div class="flex items-center gap-2">
-          <h2 class="text-xs font-bold text-white tracking-wide uppercase font-mono flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-sky-400"></span>
-            OPTION CHAIN (F&O)
-          </h2>
-          <!-- Expiry Dropdown Selector -->
-          <select id="select-expiry-date" class="text-[11px] font-mono px-2 py-0.5 rounded bg-[#111827] text-sky-300 border border-sky-900/50 focus:outline-none focus:border-sky-500 cursor-pointer">
-            <option value="2026-09-29">EXPIRY: 29-SEP-2026</option>
-          </select>
+      <!-- Option Chain Header & Filter Controls: Clean 2-Row Structured Institutional Strip -->
+      <div class="bg-[#0c1220] border-b border-[#1e293b] px-3 py-1.5 flex flex-col gap-1.5 shrink-0 z-10">
+        <!-- Row 1: Title, Expiry & Maximize -->
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <h2 class="text-xs font-bold text-white tracking-wide uppercase font-mono flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+              <span>OPTION CHAIN</span>
+            </h2>
+            <select id="select-expiry-date" class="text-[11px] font-mono px-2 py-0.5 rounded bg-[#111827] text-sky-300 border border-sky-900/50 focus:outline-none focus:border-sky-500 cursor-pointer">
+              <option value="2026-09-29">EXPIRY: 29-SEP-2026</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2 font-mono text-[11px]">
+            <div class="flex items-center gap-1.5 text-slate-300">
+              <span>PCR: <strong id="metric-pcr" class="text-sky-400">--</strong> <span id="metric-pcr-sentiment" class="text-[9px] px-1 rounded font-bold uppercase text-slate-300 bg-slate-800">--</span></span>
+              <span class="text-slate-600 hidden sm:inline">|</span>
+              <span class="hidden sm:inline">Max Pain: <strong id="metric-maxpain" class="text-amber-400">--</strong></span>
+            </div>
+            <button id="btn-maximize-chain" class="p-1 text-slate-400 hover:text-white bg-[#111827] hover:bg-[#1e293b] border border-[#1e293b] rounded transition-colors" title="Maximize Option Chain">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+            </button>
+          </div>
         </div>
 
-        <!-- Strike Depth Range Filter -->
-        <div class="flex items-center gap-1 text-[11px] font-mono">
-          <span class="text-slate-400 hidden sm:inline">Strikes:</span>
-          <div class="flex items-center bg-[#111827] border border-[#1e293b] rounded p-0.5">
-            <button class="strike-filter-btn px-2 py-0.5 rounded text-sky-400 bg-[#1e293b] font-semibold transition-colors" data-range="350">±350</button>
-            <button class="strike-filter-btn px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 transition-colors" data-range="600">±600</button>
-            <button class="strike-filter-btn px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 transition-colors" data-range="1000">±1000</button>
-            <button class="strike-filter-btn px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 transition-colors" data-range="all">All</button>
+        <!-- Row 2: Strike Filter Bar & ATM Quick Jump -->
+        <div class="flex items-center justify-between gap-2 pt-1 border-t border-[#1e293b]/50 text-[11px] font-mono">
+          <div class="flex items-center gap-1.5">
+            <span class="text-slate-400 text-[10px] uppercase">Strikes:</span>
+            <div class="flex items-center bg-[#111827] border border-[#1e293b] rounded p-0.5">
+              <button class="strike-filter-btn px-2 py-0.5 rounded text-sky-400 bg-[#1e293b] font-semibold transition-colors" data-range="350">±350</button>
+              <button class="strike-filter-btn px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 transition-colors" data-range="600">±600</button>
+              <button class="strike-filter-btn px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 transition-colors" data-range="1000">±1000</button>
+              <button class="strike-filter-btn px-2 py-0.5 rounded text-slate-400 hover:text-slate-200 transition-colors" data-range="all">All</button>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 text-[10px]">
+            <button id="btn-scroll-atm" class="text-sky-400 hover:text-sky-300 bg-sky-950/40 hover:bg-sky-900/50 border border-sky-800/40 px-2 py-0.5 rounded font-mono transition-colors flex items-center gap-1" title="Scroll to ATM strike">
+              <span>ATM</span>
+              <strong id="quick-atm-badge" class="text-white">--</strong>
+            </button>
           </div>
         </div>
       </div>
 
-      <!-- Quick Hint Banner -->
-      <div class="bg-[#090e18] border-b border-[#1e293b] px-3 py-1 text-[10px] font-mono text-slate-400 flex items-center justify-between shrink-0">
-        <span class="flex items-center gap-1 text-slate-300">
-          <span class="text-sky-400 font-bold">💡 Tip:</span> Click any CE or PE contract to chart it instantly in the chart canvas!
-        </span>
-        <span class="text-slate-500 hidden sm:inline">Lot Size: 65</span>
-      </div>
-
-      <!-- Table Column Headers Guide -->
-      <div class="bg-[#0a0f1d] border-b border-[#1e293b] px-3 py-1 flex items-center justify-between text-[10px] font-mono uppercase text-slate-400 shrink-0">
-        <div class="flex-1 text-center font-bold text-emerald-400 tracking-wider">CALLS (CE)</div>
-        <div class="w-24 text-center font-bold text-sky-400 tracking-wider">STRIKE</div>
-        <div class="flex-1 text-center font-bold text-rose-400 tracking-wider">PUTS (PE)</div>
-      </div>
-
-      <!-- Table Metric Sub-Headers -->
-      <div class="bg-[#0c1220] border-b border-[#1e293b] grid grid-cols-7 text-[10px] font-mono text-slate-400 py-1.5 px-2 shrink-0 font-semibold text-center">
-        <div class="col-span-1 text-left pl-2">OI (L)</div>
-        <div class="col-span-1">VOL (K)</div>
-        <div class="col-span-1 text-right pr-2 text-emerald-400">LTP (₹)</div>
-        <div class="col-span-1 text-sky-300">STRIKE</div>
-        <div class="col-span-1 text-left pl-2 text-rose-400">LTP (₹)</div>
-        <div class="col-span-1">VOL (K)</div>
-        <div class="col-span-1 text-right pr-2">OI (L)</div>
-      </div>
-
-      <!-- Scrollable Option Chain Table -->
-      <div id="option-chain-table-container" class="flex-1 overflow-y-auto overflow-x-hidden font-mono text-xs tabular-nums relative">
-        <table class="w-full border-collapse">
+      <!-- Scrollable Option Chain Table with Unified Sticky Headers -->
+      <div id="option-chain-table-container" class="flex-1 overflow-auto font-mono text-xs tabular-nums relative">
+        <table class="w-full min-w-[460px] border-collapse table-fixed text-xs font-mono tabular-nums">
+          <thead class="sticky top-0 z-20 bg-[#0c1220] shadow-sm select-none">
+            <!-- Row 1: CALLS / STRIKE / PUTS category banner -->
+            <tr class="border-b border-[#1e293b] text-[10px] uppercase font-bold tracking-wider">
+              <th colspan="3" class="py-1 px-2 text-center text-emerald-400 bg-emerald-950/25 border-r border-[#1e293b]">CALLS (CE)</th>
+              <th class="py-1 px-1 text-center text-sky-400 bg-[#0c1424] border-r border-[#1e293b]">STRIKE</th>
+              <th colspan="3" class="py-1 px-2 text-center text-rose-400 bg-rose-950/25">PUTS (PE)</th>
+            </tr>
+            <!-- Row 2: Detailed metric columns -->
+            <tr class="border-b border-[#1e293b] text-[10px] text-slate-400 bg-[#0a0f1d] font-semibold">
+              <th class="w-[14%] py-1.5 px-2 text-left">OI (L)</th>
+              <th class="w-[13%] py-1.5 px-1 text-center">VOL</th>
+              <th class="w-[15%] py-1.5 px-2 text-right text-emerald-400 border-r border-[#1e293b]/70">LTP</th>
+              <th class="w-[16%] py-1.5 px-1 text-center text-sky-300 bg-[#0c1424] border-r border-[#1e293b]/70">STRIKE</th>
+              <th class="w-[15%] py-1.5 px-2 text-left text-rose-400 border-r border-[#1e293b]/70">LTP</th>
+              <th class="w-[13%] py-1.5 px-1 text-center">VOL</th>
+              <th class="w-[14%] py-1.5 px-2 text-right">OI (L)</th>
+            </tr>
+          </thead>
           <tbody id="option-chain-tbody">
             <!-- Populated dynamically via JS with actual official NSE contracts -->
           </tbody>
@@ -457,18 +643,18 @@
       </div>
 
       <!-- Option Chain Footer -->
-      <div class="bg-[#0c1220] border-t border-[#1e293b] px-3.5 py-2 flex items-center justify-between text-xs font-mono shrink-0">
-        <div class="flex items-center gap-2">
-          <span class="text-[11px] text-slate-400">ATM STRIKE:</span>
-          <span id="footer-atm-strike" class="font-bold text-sky-400 text-sm">--</span>
+      <div class="bg-[#0c1220] border-t border-[#1e293b] px-3 py-1.5 flex items-center justify-between text-xs font-mono shrink-0">
+        <div class="flex items-center gap-1.5">
+          <span class="text-[10px] text-slate-500 uppercase">ATM Strike:</span>
+          <span id="footer-atm-strike" class="font-bold text-sky-400 text-xs">--</span>
         </div>
-        <div class="flex items-center gap-3 text-[11px]">
-          <span class="text-emerald-400 font-semibold">CE OI: <span id="footer-ce-oi">--</span></span>
-          <div class="w-24 h-2 bg-slate-800 rounded-full overflow-hidden flex" title="Put / Call Open Interest Ratio Bar">
+        <div class="flex items-center gap-2.5 text-[10px]">
+          <span class="text-emerald-400 font-semibold">CE: <span id="footer-ce-oi">--</span></span>
+          <div class="w-20 h-1.5 bg-slate-800 rounded-full overflow-hidden flex" title="Put / Call Open Interest Ratio Bar">
             <div id="oi-ratio-bar-ce" class="h-full bg-emerald-500" style="width: 50%;"></div>
             <div id="oi-ratio-bar-pe" class="h-full bg-rose-500" style="width: 50%;"></div>
           </div>
-          <span class="text-rose-400 font-semibold">PE OI: <span id="footer-pe-oi">--</span></span>
+          <span class="text-rose-400 font-semibold">PE: <span id="footer-pe-oi">--</span></span>
         </div>
       </div>
     </section>
@@ -543,6 +729,16 @@
           '1W': []
         },
         layoutView: 'split', // 'split' | 'chart' | 'chain'
+        splitRatio: (function () {
+          try {
+            const saved = localStorage.getItem('nifty_split_ratio');
+            if (saved) {
+              const parsed = parseInt(saved, 10);
+              if (parsed >= 20 && parsed <= 85) return parsed;
+            }
+          } catch (e) {}
+          return 70; // 70% Chart / 30% Option Chain default
+        })(),
         soundEnabled: false,
         yZoomFactor: 1.0,
         customAutoscaleActive: false,
@@ -559,7 +755,37 @@
         historicalDailyCandles: [...OFFICIAL_DAILY_CANDLES],
         displayedCandles: [],
         previousLtpMap: new Map(),
-        userInteractedWithTable: false
+        userInteractedWithTable: false,
+
+        // Technical Indicators Configuration (Auto DayWeekMonth Levels: The Lines vs Fibs)
+        indicators: {
+          dwmfibs: {
+            enabled: true,
+            showWeekly: true,
+            showDaily: true,
+            showMonthly: false,
+            showLines: true,        // Plot structural lines (High, Low, Pivot, Close)
+            showFibLevels: false,    // Suppress Fib levels per user request
+            showExt: false,
+            showOnly5Days: true,
+            showLabels: false
+          },
+          liquidityHunter: {
+            enabled: true,          // Added per user request
+            pivotLength: 1,
+            volumeFilterPct: 0.5,
+            showSweeps: false,      // Check marks (✔) off by default per Pine Script
+            showLines: true,        // The liquidity lines (Support & Resistance)
+            colorSupport: '#0000ff',       // Exactly as in Pine script (#0000ff)
+            colorResistance: '#ff00ff',    // Exactly as in Pine script (#ff00ff)
+            lineWidthMax: 10,              // Exactly as in Pine script (default 10, range 1-15)
+            transpIntense: 0,              // Min Transparency / High Volume (0 = 100% Solid)
+            transpFaded: 80,               // Max Transparency / Low Volume (80 = Faded)
+            extendBars: 25,                // Pine script: bar_index + 25
+            showLabels: false,             // Level labels with vol Δ%
+            activeOnly: false              // Active only vs broken levels
+          }
+        }
       };
 
       /* Web Audio API Feedback */
@@ -610,14 +836,20 @@
         viewModeSplit: document.getElementById('view-mode-split'),
         viewModeChart: document.getElementById('view-mode-chart'),
         viewModeChain: document.getElementById('view-mode-chain'),
+        splitRatioControls: document.getElementById('split-ratio-controls'),
+        ratioBtns: document.querySelectorAll('.ratio-btn'),
         btnRefresh: document.getElementById('btn-refresh'),
         btnSound: document.getElementById('btn-sound'),
         soundIconOff: document.getElementById('sound-icon-off'),
         soundIconOn: document.getElementById('sound-icon-on'),
 
-        // Panes
+        // Panes & Interactive Resizer
         paneChart: document.getElementById('pane-chart'),
         paneChain: document.getElementById('pane-chain'),
+        workspaceResizer: document.getElementById('workspace-resizer'),
+        resizerTooltip: document.getElementById('resizer-tooltip'),
+        btnMaximizeChart: document.getElementById('btn-maximize-chart'),
+        btnMaximizeChain: document.getElementById('btn-maximize-chain'),
 
         // Primary Chart Controls
         chartTabIndex: document.getElementById('chart-tab-index'),
@@ -676,7 +908,51 @@
         footerCeOi: document.getElementById('footer-ce-oi'),
         footerPeOi: document.getElementById('footer-pe-oi'),
         oiRatioBarCe: document.getElementById('oi-ratio-bar-ce'),
-        oiRatioBarPe: document.getElementById('oi-ratio-bar-pe')
+        oiRatioBarPe: document.getElementById('oi-ratio-bar-pe'),
+
+        // Technical Indicators DOM Elements
+        btnIndicatorsMenu: document.getElementById('btn-indicators-menu'),
+        indicatorsPopover: document.getElementById('indicators-popover'),
+        btnCloseIndicators: document.getElementById('btn-close-indicators'),
+        indicatorActiveBadge: document.getElementById('indicator-active-badge'),
+        toggleDwmfibs: document.getElementById('toggle-dwmfibs'),
+        dwmfibsLines: document.getElementById('dwmfibs-lines'),
+        dwmfibsFibs: document.getElementById('dwmfibs-fibs'),
+        dwmfibsWeekly: document.getElementById('dwmfibs-weekly'),
+        dwmfibsDaily: document.getElementById('dwmfibs-daily'),
+        dwmfibsMonthly: document.getElementById('dwmfibs-monthly'),
+        dwmfibsExt: document.getElementById('dwmfibs-ext'),
+        dwmfibsFiveDays: document.getElementById('dwmfibs-five-days'),
+        dwmfibsLabels: document.getElementById('dwmfibs-labels'),
+        toggleLh: document.getElementById('toggle-lh'),
+        lhPivotLength: document.getElementById('lh-pivot-length'),
+        lhVolFilter: document.getElementById('lh-vol-filter'),
+        lhLineWidthMax: document.getElementById('lh-line-width-max'),
+        lhLineWidthMaxVal: document.getElementById('lh-line-width-max-val'),
+        lhTranspIntense: document.getElementById('lh-transp-intense'),
+        lhTranspIntenseVal: document.getElementById('lh-transp-intense-val'),
+        lhTranspFaded: document.getElementById('lh-transp-faded'),
+        lhTranspFadedVal: document.getElementById('lh-transp-faded-val'),
+        lhColorSupport: document.getElementById('lh-color-support'),
+        lhColorResistance: document.getElementById('lh-color-resistance'),
+        lhShowLines: document.getElementById('lh-show-lines'),
+        lhExtendBars: document.getElementById('lh-extend-bars'),
+        lhShowSweeps: document.getElementById('lh-show-sweeps'),
+        lhActiveOnly: document.getElementById('lh-active-only'),
+        lhShowLabels: document.getElementById('lh-show-labels'),
+        btnScrollAtm: document.getElementById('btn-scroll-atm'),
+        quickAtmBadge: document.getElementById('quick-atm-badge'),
+        hudDwmfibs: document.getElementById('hud-dwmfibs'),
+        hudWpivot: document.getElementById('hud-wpivot'),
+        hudWr1: document.getElementById('hud-wr1'),
+        hudWs1: document.getElementById('hud-ws1'),
+        hudWr2: document.getElementById('hud-wr2'),
+        hudWs2: document.getElementById('hud-ws2'),
+        previewWpivot: document.getElementById('preview-wpivot'),
+        previewWr1: document.getElementById('preview-wr1'),
+        previewWs1: document.getElementById('preview-ws1'),
+        previewWr2: document.getElementById('preview-wr2'),
+        previewWs2: document.getElementById('preview-ws2')
       };
 
       /* ==========================================================================
@@ -922,6 +1198,19 @@
 
       function handleChartResize() {
         if (!mainChart || !els.chartCanvasContainer) return;
+        if (state.layoutView === 'split') {
+          if (window.innerWidth >= 1024) {
+            els.paneChart.style.width = `${state.splitRatio}%`;
+            els.paneChain.style.width = `${100 - state.splitRatio}%`;
+            if (els.workspaceResizer) els.workspaceResizer.classList.remove('hidden');
+            if (els.splitRatioControls) els.splitRatioControls.classList.remove('hidden');
+          } else {
+            els.paneChart.style.width = '100%';
+            els.paneChain.style.width = '100%';
+            if (els.workspaceResizer) els.workspaceResizer.classList.add('hidden');
+            if (els.splitRatioControls) els.splitRatioControls.classList.add('hidden');
+          }
+        }
         const w = els.chartCanvasContainer.clientWidth;
         const h = els.chartCanvasContainer.clientHeight;
         if (w > 0 && h > 0) {
@@ -971,28 +1260,36 @@
 
       /* Y-Axis Zoom & Scale Handlers */
       function setupZoomHandlers() {
-        els.btnZoomYIn.addEventListener('click', function () {
-          state.yZoomFactor *= 0.8;
-          state.customAutoscaleActive = true;
-          candleSeries.applyOptions({});
-        });
+        if (els.btnZoomYIn) {
+          els.btnZoomYIn.addEventListener('click', function () {
+            state.yZoomFactor *= 0.8;
+            state.customAutoscaleActive = true;
+            candleSeries.applyOptions({});
+          });
+        }
 
-        els.btnZoomYOut.addEventListener('click', function () {
-          state.yZoomFactor *= 1.25;
-          state.customAutoscaleActive = true;
-          candleSeries.applyOptions({});
-        });
+        if (els.btnZoomYOut) {
+          els.btnZoomYOut.addEventListener('click', function () {
+            state.yZoomFactor *= 1.25;
+            state.customAutoscaleActive = true;
+            candleSeries.applyOptions({});
+          });
+        }
 
-        els.btnZoomReset.addEventListener('click', function () {
-          state.yZoomFactor = 1.0;
-          state.customAutoscaleActive = false;
-          candleSeries.applyOptions({});
-          mainChart.priceScale('right').applyOptions({ autoScale: true });
-        });
+        if (els.btnZoomReset) {
+          els.btnZoomReset.addEventListener('click', function () {
+            state.yZoomFactor = 1.0;
+            state.customAutoscaleActive = false;
+            candleSeries.applyOptions({});
+            mainChart.priceScale('right').applyOptions({ autoScale: true });
+          });
+        }
 
-        els.btnChartFit.addEventListener('click', function () {
-          mainChart.timeScale().fitContent();
-        });
+        if (els.btnChartFit) {
+          els.btnChartFit.addEventListener('click', function () {
+            mainChart.timeScale().fitContent();
+          });
+        }
       }
 
       /* ==========================================================================
@@ -1503,6 +1800,544 @@
       }
 
       /* ==========================================================================
+         7. TECHNICAL INDICATORS ENGINE: AUTO DWM FIB LEVELS R3 & LIQUIDITY SWEEPS
+         ========================================================================== */
+      let activeIndicatorPriceLines = [];
+      let activeIndicatorLineSeries = [];
+
+      function aggregateDailyToMonthly(dailyBars) {
+        if (!dailyBars || dailyBars.length === 0) return [];
+        const monthlyMap = new Map();
+
+        dailyBars.forEach(bar => {
+          const d = new Date(bar.time * 1000);
+          const monthUtc = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
+          const monthKey = Math.floor(monthUtc.getTime() / 1000);
+
+          if (!monthlyMap.has(monthKey)) {
+            monthlyMap.set(monthKey, {
+              time: monthKey,
+              open: bar.open,
+              high: bar.high,
+              low: bar.low,
+              close: bar.close
+            });
+          } else {
+            const m = monthlyMap.get(monthKey);
+            m.high = Math.max(m.high, bar.high);
+            m.low = Math.min(m.low, bar.low);
+            m.close = bar.close;
+          }
+        });
+
+        return Array.from(monthlyMap.values()).sort((a, b) => a.time - b.time);
+      }
+
+      function computeDWMFibLevels() {
+        let dailyBars = [];
+        if (state.activeChartMode === 'index') {
+          dailyBars = state.historicalDailyCandles || state.actualCandles['1D'] || [];
+        } else if (state.activeOptionContract) {
+          dailyBars = generateOptionDailyCandles(state.activeOptionContract, state.historicalDailyCandles || state.actualCandles['1D']);
+        }
+        if (!dailyBars || dailyBars.length < 2) return null;
+
+        // 1. Daily Levels based on previous completed period's High, Low, Close (hlc3)
+        const prevDay = dailyBars[dailyBars.length - 2] || dailyBars[dailyBars.length - 1];
+        const dH = prevDay.high;
+        const dL = prevDay.low;
+        const dC = prevDay.close;
+        const dO = prevDay.open || prevDay.close;
+        const dPivot = (dH + dL + dC) / 3;
+        const dRange = Math.max(0.5, dH - dL);
+
+        const daily = {
+          high: dH,
+          low: dL,
+          close: dC,
+          open: dO,
+          pivot: dPivot,
+          range: dRange,
+          DR4: dPivot + dRange,
+          DR3: dPivot + dRange * 0.75,
+          DR2: dPivot + dRange * 0.50,
+          DR1: dPivot + dRange * 0.25,
+          DS1: dPivot - dRange * 0.25,
+          DS2: dPivot - dRange * 0.50,
+          DS3: dPivot - dRange * 0.75,
+          DS4: dPivot - dRange
+        };
+
+        // 2. Weekly Levels (Pine Script: Auto DayWeekMonth Levels by JustUncleL)
+        const weeklyBars = aggregateDailyToWeekly(dailyBars);
+        let weekly = null;
+        if (weeklyBars && weeklyBars.length >= 2) {
+          const prevWeek = weeklyBars[weeklyBars.length - 2];
+          const wH = prevWeek.high;
+          const wL = prevWeek.low;
+          const wC = prevWeek.close;
+          const wO = prevWeek.open || prevWeek.close;
+          const wPivot = (wH + wL + wC) / 3;
+          const wRange = Math.max(1, wH - wL);
+
+          weekly = {
+            high: wH,
+            low: wL,
+            close: wC,
+            open: wO,
+            pivot: wPivot,
+            range: wRange,
+            WH1000: wPivot + wRange,           // WR4+1000 (aqua)
+            WH_786: wPivot + wRange * 0.75,    // WR3+0786 (red)
+            WH_618: wPivot + wRange * 0.58,    // WR2+0618 (0.58 in Pine Script)
+            WH_382: wPivot + wRange * 0.25,    // WR1+0382 (fuchsia)
+            WZ_000: wPivot,                    // WPivot 0 (yellow)
+            WL_382: wPivot - wRange * 0.25,    // WS1-0382 (fuchsia)
+            WL_618: wPivot - wRange * 0.50,    // WS2-0618 (lime)
+            WL_786: wPivot - wRange * 0.75,    // WS3-0786 (red)
+            WL1000: wPivot - wRange,           // WS4-1000 (aqua)
+            kWL_1875: wPivot - wRange * 1.875, // Deep Support kWL_1875 (green)
+
+            // Extended Weekly Levels
+            WH1236: wPivot + wRange * 1.25,    // WR5+1236 (green)
+            WH1382: wPivot + wRange * 1.50,    // WR6+1382 (orange)
+            WH1618: wPivot + wRange * 1.75,    // WR7+1618 (slate)
+            WH2000: wPivot + wRange * 2.00,    // WR8+2000 (maroon)
+            WL1236: wPivot - wRange * 1.25,    // WS5-1236 (green)
+            WL1382: wPivot - wRange * 1.50,    // WS6-1382 (orange)
+            WL1618: wPivot - wRange * 1.75,    // WS7-1618 (slate)
+            WL2000: wPivot - wRange * 2.00     // WS8-2000 (maroon)
+          };
+        }
+
+        // 3. Monthly Levels
+        const monthlyBars = aggregateDailyToMonthly(dailyBars);
+        let monthly = null;
+        if (monthlyBars && monthlyBars.length >= 2) {
+          const prevMonth = monthlyBars[monthlyBars.length - 2];
+          const mH = prevMonth.high;
+          const mL = prevMonth.low;
+          const mC = prevMonth.close;
+          const mO = prevMonth.open || prevMonth.close;
+          const mPivot = (mH + mL + mC) / 3;
+          const mRange = Math.max(1, mH - mL);
+
+          monthly = {
+            high: mH,
+            low: mL,
+            close: mC,
+            open: mO,
+            pivot: mPivot,
+            range: mRange,
+            MH1000: mPivot + mRange,
+            MH_786: mPivot + mRange * 0.75,
+            MH_618: mPivot + mRange * 0.50,
+            MH_382: mPivot + mRange * 0.25,
+            MZ_000: mPivot,
+            ML_382: mPivot - mRange * 0.25,
+            ML_618: mPivot - mRange * 0.50,
+            ML_786: mPivot - mRange * 0.75,
+            ML1000: mPivot - mRange,
+            // Extended Monthly Levels
+            MH1236: mPivot + mRange * 1.25,
+            MH1382: mPivot + mRange * 1.50,
+            MH1618: mPivot + mRange * 1.75,
+            MH2000: mPivot + mRange * 2.00,
+            ML1236: mPivot - mRange * 1.25,
+            ML1382: mPivot - mRange * 1.50,
+            ML1618: mPivot - mRange * 1.75,
+            ML2000: mPivot - mRange * 2.00
+          };
+        }
+
+        return { daily, weekly, monthly };
+      }
+
+      /* Helper: Convert Hex color to RGBA with specific opacity */
+      function hexToRgba(hex, alpha = 1) {
+        if (!hex) return `rgba(0, 0, 255, ${alpha})`;
+        if (hex.startsWith('rgba') || hex.startsWith('rgb')) {
+          return hex.replace(/rgba?\(([^)]+)\)/, (m, vals) => {
+            const parts = vals.split(',').map(v => v.trim());
+            return `rgba(${parts[0]}, ${parts[1]}, ${parts[2]}, ${Math.max(0.04, Math.min(1.0, alpha)).toFixed(2)})`;
+          });
+        }
+        let c = hex.replace('#', '');
+        if (c.length === 3) c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2];
+        const r = parseInt(c.substring(0, 2), 16) || 0;
+        const g = parseInt(c.substring(2, 4), 16) || 0;
+        const b = parseInt(c.substring(4, 6), 16) || 0;
+        const a = Math.max(0.04, Math.min(1.0, alpha));
+        return `rgba(${r}, ${g}, ${b}, ${a.toFixed(2)})`;
+      }
+
+      /* Helper: get or approximate candle volume */
+      function getCandleVolume(bar, prevBar) {
+        if (typeof bar.volume === 'number' && bar.volume > 0) return bar.volume;
+        const tr = Math.max(bar.high - bar.low, 0.2);
+        const body = Math.abs(bar.close - bar.open);
+        const seed = Math.sin(bar.time * 0.05) * 10000;
+        const variance = seed - Math.floor(seed);
+        return Math.round((tr * 25000 + body * 45000 + 8000) * (0.6 + 0.8 * variance));
+      }
+
+      /* ==========================================================================
+         Liquidity Sweep Hunter [Refactored] (Pine Script by ravishankerannem)
+         ========================================================================== */
+      function computeLiquiditySweepHunter(bars, config = {}) {
+        const pivotLength = config.pivotLength !== undefined ? config.pivotLength : 1;
+        const volumeFilterPct = config.volumeFilterPct !== undefined ? config.volumeFilterPct : 0.5;
+        const showSweeps = !!config.showSweeps;
+        const colorSupport = config.colorSupport || '#0000ff';
+        const colorResistance = config.colorResistance || '#ff00ff';
+        const lineWidthMax = config.lineWidthMax !== undefined ? config.lineWidthMax : 10;
+        const transpIntense = config.transpIntense !== undefined ? config.transpIntense : 0;
+        const transpFaded = config.transpFaded !== undefined ? config.transpFaded : 80;
+        const activeOnly = !!config.activeOnly;
+
+        if (!bars || bars.length < pivotLength * 2 + 2) {
+          return { levels: [], activeLevels: [], markers: [] };
+        }
+
+        // 1. Calculate volume_delta_pct = (volume - volume[1]) / volume * 100.0
+        const volDeltas = new Float64Array(bars.length);
+        for (let i = 0; i < bars.length; i++) {
+          const vol = getCandleVolume(bars[i], bars[i - 1]);
+          const prevVol = i > 0 ? getCandleVolume(bars[i - 1], bars[i - 2]) : vol;
+          volDeltas[i] = vol > 0 ? ((vol - prevVol) / vol) * 100.0 : 0;
+        }
+
+        const activeLevels = [];
+        const completedLevels = [];
+        const markers = [];
+
+        // Pine script: if last_bar_index - bar_index < 2000 (calc_bars_count = 1000)
+        const startIdx = Math.max(pivotLength * 2, bars.length - 1000);
+
+        for (let i = startIdx; i < bars.length; i++) {
+          const pIdx = i - pivotLength;
+          if (pIdx >= pivotLength) {
+            let isSwingLow = true;
+            let isSwingHigh = true;
+            for (let k = 1; k <= pivotLength; k++) {
+              if (bars[pIdx].low >= bars[pIdx - k].low || bars[pIdx].low >= bars[pIdx + k].low) isSwingLow = false;
+              if (bars[pIdx].high <= bars[pIdx - k].high || bars[pIdx].high <= bars[pIdx + k].high) isSwingHigh = false;
+            }
+
+            const vDelta = volDeltas[pIdx];
+            if (isSwingLow && vDelta > volumeFilterPct) {
+              // volume_ratio = math.max(0.0, math.min(1.0, volume_delta_pct[pivot_length] / 100.0))
+              const volumeRatio = Math.max(0.0, Math.min(1.0, vDelta / 100.0));
+              // calc_width = math.round(3 + (line_width_max - 3) * volume_ratio)
+              const calcWidth = Math.max(1, Math.round(3 + (lineWidthMax - 3) * volumeRatio));
+              // calc_transp = math.round(transp_faded + (transp_intense - transp_faded) * volume_ratio)
+              const calcTransp = Math.round(transpFaded + (transpIntense - transpFaded) * volumeRatio);
+              const alpha = Math.max(0.04, Math.min(1.0, (100 - calcTransp) / 100.0));
+              const finalColor = hexToRgba(colorSupport, alpha);
+
+              activeLevels.push({
+                isSupport: true,
+                price: bars[pIdx].low,
+                startTime: bars[pIdx].time,
+                startIdx: pIdx,
+                endTime: bars[i].time,
+                baseColor: colorSupport,
+                finalColor: finalColor,
+                alpha: alpha,
+                width: calcWidth,
+                volumeRatio: volumeRatio,
+                volumeDeltaPct: vDelta,
+                calcTransp: calcTransp,
+                invalidated: false
+              });
+            }
+
+            if (isSwingHigh && vDelta > volumeFilterPct) {
+              const volumeRatio = Math.max(0.0, Math.min(1.0, vDelta / 100.0));
+              const calcWidth = Math.max(1, Math.round(3 + (lineWidthMax - 3) * volumeRatio));
+              const calcTransp = Math.round(transpFaded + (transpIntense - transpFaded) * volumeRatio);
+              const alpha = Math.max(0.04, Math.min(1.0, (100 - calcTransp) / 100.0));
+              const finalColor = hexToRgba(colorResistance, alpha);
+
+              activeLevels.push({
+                isSupport: false,
+                price: bars[pIdx].high,
+                startTime: bars[pIdx].time,
+                startIdx: pIdx,
+                endTime: bars[i].time,
+                baseColor: colorResistance,
+                finalColor: finalColor,
+                alpha: alpha,
+                width: calcWidth,
+                volumeRatio: volumeRatio,
+                volumeDeltaPct: vDelta,
+                calcTransp: calcTransp,
+                invalidated: false
+              });
+            }
+          }
+
+          // update_liquidity_levels()
+          const currBar = bars[i];
+          for (let j = activeLevels.length - 1; j >= 0; j--) {
+            const lvl = activeLevels[j];
+            if (i <= lvl.startIdx) continue;
+
+            lvl.endTime = currBar.time;
+
+            // Sweep Check: Price breaches beyond level but candle closes back within structure
+            const sweptSupport = lvl.isSupport && currBar.low < lvl.price && currBar.close > lvl.price;
+            const sweptResistance = !lvl.isSupport && currBar.high > lvl.price && currBar.close < lvl.price;
+
+            if (showSweeps && (sweptSupport || sweptResistance)) {
+              markers.push({
+                time: currBar.time,
+                position: sweptSupport ? 'belowBar' : 'aboveBar',
+                color: sweptSupport ? colorSupport : colorResistance,
+                shape: sweptSupport ? 'arrowUp' : 'arrowDown',
+                text: '✔'
+              });
+            }
+
+            // Breakout / Invalidation Check: candle cuts straight through level
+            const isInvalidated = currBar.high > lvl.price && currBar.low < lvl.price;
+            if (isInvalidated) {
+              lvl.endTime = currBar.time;
+              lvl.invalidated = true;
+              completedLevels.push(lvl);
+              activeLevels.splice(j, 1);
+            }
+          }
+        }
+
+        const levels = activeOnly ? activeLevels : [...completedLevels.slice(-30), ...activeLevels];
+        return { levels, activeLevels, markers };
+      }
+
+      function renderIndicators() {
+        if (!candleSeries || !mainChart) return;
+
+        // Clear previous price lines and indicator line series
+        activeIndicatorPriceLines.forEach(pl => {
+          try { candleSeries.removePriceLine(pl); } catch (e) {}
+        });
+        activeIndicatorPriceLines = [];
+
+        activeIndicatorLineSeries.forEach(s => {
+          try { mainChart.removeSeries(s); } catch (e) {}
+        });
+        activeIndicatorLineSeries = [];
+
+        const dwm = state.indicators.dwmfibs;
+        const fibs = computeDWMFibLevels();
+
+        if (dwm.enabled && fibs) {
+          const toPlot = [];
+
+          // 1. The Key Structural Lines: High, Low, Pivot, Close (Default: ACTIVE per user request)
+          if (dwm.showLines) {
+            // Weekly Key Lines
+            if (dwm.showWeekly && fibs.weekly) {
+              const w = fibs.weekly;
+              toPlot.push({ price: w.high, title: 'PWH', color: '#00e5ff', lineWidth: 2, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: w.low, title: 'PWL', color: '#e879f9', lineWidth: 2, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: w.pivot, title: 'WPivot', color: '#f59e0b', lineWidth: 1.5, lineStyle: LightweightCharts.LineStyle.Solid });
+              if (w.close) {
+                toPlot.push({ price: w.close, title: 'PWC', color: '#38bdf8', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+              }
+            }
+
+            // Daily Key Lines
+            if (dwm.showDaily && fibs.daily) {
+              const d = fibs.daily;
+              toPlot.push({ price: d.high, title: 'PDH', color: '#10b981', lineWidth: 2, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: d.low, title: 'PDL', color: '#f43f5e', lineWidth: 2, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: d.pivot, title: 'DPivot', color: '#facc15', lineWidth: 1.5, lineStyle: LightweightCharts.LineStyle.Solid });
+              if (d.close) {
+                toPlot.push({ price: d.close, title: 'PDC', color: '#94a3b8', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+              }
+            }
+
+            // Monthly Key Lines
+            if (dwm.showMonthly && fibs.monthly) {
+              const m = fibs.monthly;
+              toPlot.push({ price: m.high, title: 'PMH', color: '#3b82f6', lineWidth: 2, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: m.low, title: 'PML', color: '#dc2626', lineWidth: 2, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: m.pivot, title: 'MPivot', color: '#8b5cf6', lineWidth: 1.5, lineStyle: LightweightCharts.LineStyle.Solid });
+              if (m.close) {
+                toPlot.push({ price: m.close, title: 'PMC', color: '#64748b', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+              }
+            }
+          }
+
+          // 2. Fibonacci Retracement Levels (OFF by default: "and the lines not the Fib levels")
+          if (dwm.showFibLevels) {
+            // Weekly Fib Levels
+            if (dwm.showWeekly && fibs.weekly) {
+              const w = fibs.weekly;
+              toPlot.push({ price: w.WH1000, title: 'WR4+1000', color: '#00e5ff', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: w.WH_786, title: 'WR3+0786', color: '#f43f5e', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: w.WH_618, title: 'WR2+0618', color: '#22c55e', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: w.WH_382, title: 'WR1+0382', color: '#e879f9', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: w.WZ_000, title: 'WPivot 0', color: '#eab308', lineWidth: 1.5, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: w.WL_382, title: 'WS1-0382', color: '#e879f9', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: w.WL_618, title: 'WS2-0618', color: '#22c55e', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: w.WL_786, title: 'WS3-0786', color: '#f43f5e', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: w.WL1000, title: 'WS4-1000', color: '#00e5ff', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: w.kWL_1875, title: 'WS2-Deep', color: '#10b981', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+
+              if (dwm.showExt) {
+                toPlot.push({ price: w.WH2000, title: 'WR8+2000', color: '#991b1b', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+                toPlot.push({ price: w.WH1618, title: 'WR7+1618', color: '#94a3b8', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+                toPlot.push({ price: w.WH1382, title: 'WR6+1382', color: '#f97316', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+                toPlot.push({ price: w.WH1236, title: 'WR5+1236', color: '#16a34a', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+                toPlot.push({ price: w.WL1236, title: 'WS5-1236', color: '#16a34a', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+                toPlot.push({ price: w.WL1382, title: 'WS6-1382', color: '#f97316', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+                toPlot.push({ price: w.WL1618, title: 'WS7-1618', color: '#94a3b8', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+                toPlot.push({ price: w.WL2000, title: 'WS8-2000', color: '#991b1b', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+              }
+            }
+
+            // Daily Fib Levels
+            if (dwm.showDaily && fibs.daily) {
+              const d = fibs.daily;
+              toPlot.push({ price: d.DR4, title: 'DR4 (1.0)', color: '#38bdf8', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: d.DR3, title: 'DR3 (.786)', color: '#f87171', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: d.DR2, title: 'DR2 (.50)', color: '#4ade80', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: d.DR1, title: 'DR1 (.25)', color: '#f472b6', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: d.pivot, title: 'DPivot', color: '#facc15', lineWidth: 1.5, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: d.DS1, title: 'DS1 (.25)', color: '#f472b6', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: d.DS2, title: 'DS2 (.50)', color: '#4ade80', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: d.DS3, title: 'DS3 (.786)', color: '#f87171', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: d.DS4, title: 'DS4 (1.0)', color: '#38bdf8', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+            }
+
+            // Monthly Fib Levels
+            if (dwm.showMonthly && fibs.monthly) {
+              const m = fibs.monthly;
+              toPlot.push({ price: m.MH1000, title: 'MR4+1000', color: '#06b6d4', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: m.MH_786, title: 'MR3+0786', color: '#dc2626', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: m.MH_618, title: 'MR2+0618', color: '#16a34a', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: m.MH_382, title: 'MR1+0382', color: '#d946ef', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: m.MZ_000, title: 'MPivot 0', color: '#ca8a04', lineWidth: 1.5, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: m.ML_382, title: 'MS1-0382', color: '#d946ef', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: m.ML_618, title: 'MS2-0618', color: '#16a34a', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: m.ML_786, title: 'MS3-0786', color: '#dc2626', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+              toPlot.push({ price: m.ML1000, title: 'MS4-1000', color: '#06b6d4', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid });
+            }
+          }
+
+          // Target bars: show only 5 days if enabled, or all displayed bars
+          let targetBars = state.displayedCandles || [];
+          if (dwm.showOnly5Days && targetBars.length > 0) {
+            if (['1m', '5m', '15m', '1H'].includes(state.timeframe)) {
+              const sessions = getTradingSessions(targetBars);
+              const last5 = sessions.slice(-5);
+              targetBars = last5.flat();
+            } else {
+              targetBars = targetBars.slice(-5);
+            }
+          }
+
+          if (targetBars.length >= 2) {
+            toPlot.forEach(item => {
+              try {
+                const s = mainChart.addLineSeries({
+                  color: item.color,
+                  lineWidth: item.lineWidth,
+                  lineStyle: item.lineStyle,
+                  priceLineVisible: false,
+                  lastValueVisible: !!dwm.showLabels,
+                  crosshairMarkerVisible: false,
+                  title: dwm.showLabels ? item.title : '',
+                  autoscaleInfoProvider: () => null
+                });
+                s.setData(targetBars.map(b => ({ time: b.time, value: item.price })));
+                activeIndicatorLineSeries.push(s);
+              } catch (e) {}
+            });
+          }
+        }
+
+        // Liquidity Sweep Hunter [Refactored] (Pine Script by ravishankerannem)
+        if (state.indicators.liquidityHunter.enabled) {
+          const lh = state.indicators.liquidityHunter;
+          const result = computeLiquiditySweepHunter(state.displayedCandles, lh);
+
+          // Plot horizontal Liquidity Lines with dynamic transparency and volume-scaled width
+          if (lh.showLines && result.levels.length > 0) {
+            let stepSec = 60;
+            if (state.timeframe === '5m') stepSec = 300;
+            else if (state.timeframe === '15m') stepSec = 900;
+            else if (state.timeframe === '1H') stepSec = 3600;
+            else if (state.timeframe === '1D') stepSec = 86400;
+
+            const extendBars = lh.extendBars !== undefined ? lh.extendBars : 25;
+            const lastCandleTime = state.displayedCandles.length > 0 ? state.displayedCandles[state.displayedCandles.length - 1].time : 0;
+
+            result.levels.forEach(lvl => {
+              try {
+                let lineBars = state.displayedCandles
+                  .filter(b => b.time >= lvl.startTime && b.time <= lvl.endTime)
+                  .map(b => ({ time: b.time, value: lvl.price }));
+
+                if (lineBars.length === 1) {
+                  const nextBar = state.displayedCandles.find(b => b.time > lvl.startTime);
+                  if (nextBar) {
+                    lineBars.push({ time: nextBar.time, value: lvl.price });
+                  }
+                }
+
+                // Pine Script: current_level.level_line.set_x2(bar_index + 25)
+                // If active (unbroken) and extendBars > 0, project forward past the current candle!
+                if (!lvl.invalidated && extendBars > 0 && lineBars.length > 0 && lastCandleTime > 0) {
+                  for (let ext = 1; ext <= extendBars; ext++) {
+                    lineBars.push({ time: lastCandleTime + ext * stepSec, value: lvl.price });
+                  }
+                }
+
+                if (lineBars.length >= 2) {
+                  const s = mainChart.addLineSeries({
+                    color: lvl.finalColor, // Dynamic volume-based transparency!
+                    lineWidth: Math.max(1, Math.min(15, lvl.width)), // Dynamic volume-based line width (3 to 10px)!
+                    lineStyle: LightweightCharts.LineStyle.Solid,
+                    priceLineVisible: false,
+                    lastValueVisible: !!lh.showLabels,
+                    crosshairMarkerVisible: false,
+                    title: lh.showLabels ? `${lvl.isSupport ? 'Supp' : 'Res'} (ΔVol: +${lvl.volumeDeltaPct.toFixed(1)}%)` : '',
+                    autoscaleInfoProvider: () => null
+                  });
+                  s.setData(lineBars);
+                  activeIndicatorLineSeries.push(s);
+                }
+              } catch (e) {}
+            });
+          }
+
+          // Sweep checkmarks (✔) - default false per user request
+          if (lh.showSweeps) {
+            candleSeries.setMarkers(result.markers);
+          } else {
+            candleSeries.setMarkers([]);
+          }
+        } else {
+          candleSeries.setMarkers([]);
+        }
+
+        // Update badge text on indicator toolbar button
+        if (els.indicatorActiveBadge) {
+          const parts = [];
+          if (state.indicators.dwmfibs.enabled) {
+            parts.push(dwm.showLines ? (dwm.showOnly5Days ? 'DWM (5D)' : 'DWM') : 'DWM-FIB');
+          }
+          if (state.indicators.liquidityHunter.enabled) {
+            parts.push(state.indicators.liquidityHunter.showLines ? 'LSH' : 'SWP');
+          }
+          els.indicatorActiveBadge.textContent = parts.length ? parts.join('+') : 'OFF';
+        }
+      }
+
+      /* ==========================================================================
          8. CHART SWITCHING ARCHITECTURE: INDEX VS OPTION CONTRACT (IN-PLACE)
          ========================================================================== */
       function renderActiveChart() {
@@ -1537,6 +2372,8 @@
           els.optionChartContextBar.classList.add('hidden');
 
           els.chartWatermarkTitle.textContent = 'NIFTY 50';
+          const hudSym = document.getElementById('hud-symbol');
+          if (hudSym) hudSym.textContent = 'NIFTY 50';
 
           let bars = [];
           if (state.timeframe === '1D') {
@@ -1581,6 +2418,8 @@
           const typeStr = opt.isCall ? 'CE' : 'PE';
 
           els.chartWatermarkTitle.textContent = `${opt.strike} ${typeStr}`;
+          const hudSym = document.getElementById('hud-symbol');
+          if (hudSym) hudSym.textContent = `${opt.strike} ${typeStr}`;
 
           // Update Context Bar details
           els.optContextTitle.textContent = `NIFTY ${state.selectedExpiry} ${opt.strike} ${typeStr}`;
@@ -1589,7 +2428,7 @@
             ? 'px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
             : 'px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-rose-500/20 text-rose-400 border border-rose-500/40';
 
-          els.optContextLtp.textContent = `₹${opt.ltp.toFixed(2)}`;
+          els.optContextLtp.textContent = `${opt.ltp.toFixed(2)}`;
           els.optContextLtp.className = `text-sm font-bold ${opt.isCall ? 'text-emerald-400' : 'text-rose-400'}`;
 
           const chg = opt.dayChange !== undefined ? opt.dayChange : (opt.ltp - opt.close);
@@ -1629,6 +2468,9 @@
           // Sync Option Chain highlighted contract
           highlightChartedContractInTable();
         }
+
+        // Render technical indicators (DWMFIBS levels and Liquidity Sweeps)
+        renderIndicators();
       }
 
       function updateGreeksDisplay(opt) {
@@ -1653,8 +2495,8 @@
         }
         const extrinsic = Math.max(0, opt.ltp - intrinsic);
 
-        els.greekIntrinsic.textContent = `₹${intrinsic.toFixed(2)}`;
-        els.greekExtrinsic.textContent = `₹${extrinsic.toFixed(2)}`;
+        els.greekIntrinsic.textContent = intrinsic.toFixed(2);
+        els.greekExtrinsic.textContent = extrinsic.toFixed(2);
       }
 
       function switchToOptionChart(strike, isCall) {
@@ -1717,7 +2559,7 @@
         els.chartTabOptionWrapper.classList.add('flex');
         const typeStr = isCall ? 'CE' : 'PE';
         els.tabOptionTitle.textContent = `${strike} ${typeStr}`;
-        els.tabOptionLtp.textContent = `₹${validLtp.toFixed(2)}`;
+        els.tabOptionLtp.textContent = `${validLtp.toFixed(2)}`;
         els.tabOptionLtp.className = `text-xs font-bold ml-1 ${isCall ? 'text-emerald-400' : 'text-rose-400'}`;
         els.tabOptionBadge.className = `w-2 h-2 rounded-full ${isCall ? 'bg-emerald-400' : 'bg-rose-400'}`;
 
@@ -1887,44 +2729,38 @@
 
           tr.innerHTML = `
             <!-- CALLS: OI (L) -->
-            <td class="py-2 px-2 text-left text-slate-300 relative ${ceCellClass}" title="Click to chart ${strike} CE">
+            <td class="w-[14%] py-2 px-2 text-left text-slate-300 relative ${ceCellClass}" title="Click to chart ${strike} CE">
               <div class="absolute inset-y-1 left-0 bg-emerald-500/10 pointer-events-none rounded-r" style="width: ${ceOiWidth}%;"></div>
               <span class="relative z-1">${ceOiLakhs}</span>
             </td>
 
             <!-- CALLS: VOL (K) -->
-            <td class="py-2 px-1 text-center text-slate-400 text-[11px] ${ceCellClass}" title="Click to chart ${strike} CE">
+            <td class="w-[13%] py-2 px-1 text-center text-slate-400 text-[11px] ${ceCellClass}" title="Click to chart ${strike} CE">
               ${ceVolK}k
             </td>
 
             <!-- CALLS: LTP -->
-            <td class="py-2 px-2 text-right font-bold text-emerald-400 ${ceCellClass}" title="Click to chart ${strike} CE">
-              <div class="flex items-center justify-end gap-1">
-                <span>₹${ce.ltp.toFixed(2)}</span>
-                <span class="opacity-0 group-hover:opacity-100 text-[10px] text-sky-400">📊</span>
-              </div>
+            <td class="w-[15%] py-2 px-2 text-right font-bold text-emerald-400 border-r border-[#1e293b]/70 ${ceCellClass}" title="Click to chart ${strike} CE">
+              <span class="tabular-nums">${ce.ltp.toFixed(2)}</span>
             </td>
 
             <!-- CENTER: STRIKE PRICE -->
-            <td class="py-2 px-1 text-center font-bold text-slate-100 bg-[#0c1220] border-x border-[#1e293b] select-all">
-              ${isAtm ? `<span class="inline-block px-1.5 py-0.5 rounded text-[10px] atm-badge font-bold tracking-tight">${strike}</span>` : strike}
+            <td class="w-[16%] py-2 px-1 text-center font-bold text-slate-100 bg-[#0c1424] border-r border-[#1e293b]/70 select-all">
+              ${isAtm ? `<span class="inline-block px-2 py-0.5 rounded text-[11px] atm-badge font-bold tracking-tight">${strike}</span>` : strike}
             </td>
 
             <!-- PUTS: LTP -->
-            <td class="py-2 px-2 text-left font-bold text-rose-400 ${peCellClass}" title="Click to chart ${strike} PE">
-              <div class="flex items-center justify-start gap-1">
-                <span class="opacity-0 group-hover:opacity-100 text-[10px] text-sky-400">📊</span>
-                <span>₹${pe.ltp.toFixed(2)}</span>
-              </div>
+            <td class="w-[15%] py-2 px-2 text-left font-bold text-rose-400 border-r border-[#1e293b]/70 ${peCellClass}" title="Click to chart ${strike} PE">
+              <span class="tabular-nums">${pe.ltp.toFixed(2)}</span>
             </td>
 
             <!-- PUTS: VOL (K) -->
-            <td class="py-2 px-1 text-center text-slate-400 text-[11px] ${peCellClass}" title="Click to chart ${strike} PE">
+            <td class="w-[13%] py-2 px-1 text-center text-slate-400 text-[11px] ${peCellClass}" title="Click to chart ${strike} PE">
               ${peVolK}k
             </td>
 
             <!-- PUTS: OI (L) -->
-            <td class="py-2 px-2 text-right text-slate-300 relative ${peCellClass}" title="Click to chart ${strike} PE">
+            <td class="w-[14%] py-2 px-2 text-right text-slate-300 relative ${peCellClass}" title="Click to chart ${strike} PE">
               <div class="absolute inset-y-1 right-0 bg-rose-500/10 pointer-events-none rounded-l" style="width: ${peOiWidth}%;"></div>
               <span class="relative z-1">${peOiLakhs}</span>
             </td>
@@ -1950,8 +2786,9 @@
         // Highlight currently charted contract
         highlightChartedContractInTable();
 
-        // Footer metrics
+        // Footer metrics & Quick ATM Jump
         els.footerAtmStrike.textContent = atm.toLocaleString('en-IN');
+        if (els.quickAtmBadge) els.quickAtmBadge.textContent = atm.toLocaleString('en-IN');
         els.footerCeOi.textContent = `${state.totalCeOi} L`;
         els.footerPeOi.textContent = `${state.totalPeOi} L`;
 
@@ -2369,8 +3206,146 @@
       }
 
       /* ==========================================================================
-         11. RESPONSIVE LAYOUT SWITCHING (SPLIT / CHART / CHAIN)
+         11. RESPONSIVE LAYOUT SWITCHING (SPLIT / CHART / CHAIN) & FLUID RESIZER
          ========================================================================== */
+      function updateRatioButtons(currentRatio) {
+        if (!els.ratioBtns) return;
+        els.ratioBtns.forEach(btn => {
+          const r = parseInt(btn.getAttribute('data-ratio'), 10);
+          if (Math.abs(r - currentRatio) <= 2) {
+            btn.className = 'ratio-btn px-2 py-0.5 rounded text-sky-400 bg-[#1e293b] font-semibold transition-colors shadow-sm';
+          } else {
+            btn.className = 'ratio-btn px-2 py-0.5 rounded text-slate-400 hover:text-white transition-colors';
+          }
+        });
+      }
+
+      function setSplitRatio(percent, save = true) {
+        const clamped = Math.min(85, Math.max(20, Math.round(percent)));
+        state.splitRatio = clamped;
+        if (save) {
+          try {
+            localStorage.setItem('nifty_split_ratio', clamped);
+          } catch (e) {}
+        }
+
+        if (state.layoutView === 'split') {
+          if (window.innerWidth >= 1024) {
+            els.paneChart.style.width = `${clamped}%`;
+            els.paneChain.style.width = `${100 - clamped}%`;
+          } else {
+            els.paneChart.style.width = '100%';
+            els.paneChain.style.width = '100%';
+          }
+        }
+
+        updateRatioButtons(clamped);
+
+        requestAnimationFrame(() => {
+          handleChartResize();
+          if (mainChart) mainChart.timeScale().fitContent();
+        });
+      }
+
+      function setupSplitResizer() {
+        const resizer = els.workspaceResizer;
+        const workspace = document.getElementById('main-workspace');
+        const tooltip = els.resizerTooltip;
+        if (!resizer || !workspace) return;
+
+        let isDragging = false;
+        let rafId = null;
+
+        function onPointerDown(e) {
+          if (window.innerWidth < 1024) return;
+          if (state.layoutView !== 'split') return;
+
+          isDragging = true;
+          document.body.classList.add('resizer-dragging');
+          resizer.classList.add('resizer-bar-active');
+          if (tooltip) {
+            tooltip.classList.remove('hidden');
+            tooltip.textContent = `${state.splitRatio}% Chart · ${100 - state.splitRatio}% Chain`;
+          }
+          e.preventDefault();
+        }
+
+        function onPointerMove(e) {
+          if (!isDragging) return;
+
+          const rect = workspace.getBoundingClientRect();
+          const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+          const offsetX = clientX - rect.left;
+          const ratio = (offsetX / rect.width) * 100;
+          const clamped = Math.min(85, Math.max(20, Math.round(ratio)));
+          state.splitRatio = clamped;
+
+          if (rafId) cancelAnimationFrame(rafId);
+          rafId = requestAnimationFrame(() => {
+            els.paneChart.style.width = `${clamped}%`;
+            els.paneChain.style.width = `${100 - clamped}%`;
+
+            if (tooltip) {
+              tooltip.textContent = `${clamped}% Chart · ${100 - clamped}% Chain`;
+            }
+
+            updateRatioButtons(clamped);
+            handleChartResize();
+          });
+        }
+
+        function onPointerUp() {
+          if (!isDragging) return;
+          isDragging = false;
+          document.body.classList.remove('resizer-dragging');
+          resizer.classList.remove('resizer-bar-active');
+          if (tooltip) tooltip.classList.add('hidden');
+
+          try {
+            localStorage.setItem('nifty_split_ratio', state.splitRatio);
+          } catch (e) {}
+
+          handleChartResize();
+          if (mainChart) mainChart.timeScale().fitContent();
+        }
+
+        resizer.addEventListener('mousedown', onPointerDown);
+        resizer.addEventListener('touchstart', onPointerDown, { passive: false });
+
+        window.addEventListener('mousemove', onPointerMove);
+        window.addEventListener('touchmove', onPointerMove, { passive: false });
+
+        window.addEventListener('mouseup', onPointerUp);
+        window.addEventListener('touchend', onPointerUp);
+
+        resizer.addEventListener('dblclick', function () {
+          // Double-click toggles between spacious 70:30 and 50:50
+          const target = state.splitRatio === 70 ? 50 : 70;
+          setSplitRatio(target, true);
+        });
+      }
+
+      function updateMaximizeButtonIcons() {
+        if (els.btnMaximizeChart) {
+          if (state.layoutView === 'chart') {
+            els.btnMaximizeChart.title = 'Restore Split View';
+            els.btnMaximizeChart.innerHTML = '<svg class="w-3.5 h-3.5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path></svg>';
+          } else {
+            els.btnMaximizeChart.title = 'Maximize Chart Workspace';
+            els.btnMaximizeChart.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>';
+          }
+        }
+        if (els.btnMaximizeChain) {
+          if (state.layoutView === 'chain') {
+            els.btnMaximizeChain.title = 'Restore Split View';
+            els.btnMaximizeChain.innerHTML = '<svg class="w-3.5 h-3.5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path></svg>';
+          } else {
+            els.btnMaximizeChain.title = 'Maximize Option Chain';
+            els.btnMaximizeChain.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>';
+          }
+        }
+      }
+
       function setLayoutView(mode) {
         state.layoutView = mode;
 
@@ -2388,19 +3363,32 @@
 
         if (mode === 'split') {
           els.paneChart.classList.remove('hidden');
-          els.paneChart.style.width = '';
           els.paneChain.classList.remove('hidden');
-          els.paneChain.style.width = '';
+          if (els.workspaceResizer) els.workspaceResizer.classList.remove('hidden');
+          if (els.splitRatioControls) els.splitRatioControls.classList.remove('hidden');
+
+          if (window.innerWidth >= 1024) {
+            els.paneChart.style.width = `${state.splitRatio}%`;
+            els.paneChain.style.width = `${100 - state.splitRatio}%`;
+          } else {
+            els.paneChart.style.width = '100%';
+            els.paneChain.style.width = '100%';
+          }
         } else if (mode === 'chart') {
           els.paneChart.classList.remove('hidden');
           els.paneChart.style.width = '100%';
           els.paneChain.classList.add('hidden');
+          if (els.workspaceResizer) els.workspaceResizer.classList.add('hidden');
+          if (els.splitRatioControls) els.splitRatioControls.classList.add('hidden');
         } else if (mode === 'chain') {
           els.paneChart.classList.add('hidden');
           els.paneChain.classList.remove('hidden');
           els.paneChain.style.width = '100%';
+          if (els.workspaceResizer) els.workspaceResizer.classList.add('hidden');
+          if (els.splitRatioControls) els.splitRatioControls.classList.add('hidden');
         }
 
+        updateMaximizeButtonIcons();
         setTimeout(handleChartResize, 60);
       }
 
@@ -2420,6 +3408,35 @@
         els.viewModeSplit.addEventListener('click', () => setLayoutView('split'));
         els.viewModeChart.addEventListener('click', () => setLayoutView('chart'));
         els.viewModeChain.addEventListener('click', () => setLayoutView('chain'));
+
+        // Ratio preset buttons (e.g. 70:30, 80:20, 60:40, 50:50)
+        if (els.ratioBtns) {
+          els.ratioBtns.forEach(btn => {
+            btn.addEventListener('click', function () {
+              const r = parseInt(this.getAttribute('data-ratio'), 10);
+              if (!isNaN(r)) {
+                if (state.layoutView !== 'split') {
+                  setLayoutView('split');
+                }
+                setSplitRatio(r, true);
+              }
+            });
+          });
+        }
+
+        // Maximize button on Chart
+        if (els.btnMaximizeChart) {
+          els.btnMaximizeChart.addEventListener('click', () => {
+            setLayoutView(state.layoutView === 'chart' ? 'split' : 'chart');
+          });
+        }
+
+        // Maximize button on Option Chain
+        if (els.btnMaximizeChain) {
+          els.btnMaximizeChain.addEventListener('click', () => {
+            setLayoutView(state.layoutView === 'chain' ? 'split' : 'chain');
+          });
+        }
 
         // Timeframe selector buttons
         els.tfButtons.forEach(btn => {
@@ -2503,17 +3520,203 @@
           }
         });
 
+        // Technical Indicators Popover and Toggle Listeners
+        if (els.btnIndicatorsMenu && els.indicatorsPopover) {
+          els.btnIndicatorsMenu.addEventListener('click', function (e) {
+            e.stopPropagation();
+            els.indicatorsPopover.classList.toggle('hidden');
+          });
+
+          if (els.btnCloseIndicators) {
+            els.btnCloseIndicators.addEventListener('click', function (e) {
+              e.stopPropagation();
+              els.indicatorsPopover.classList.add('hidden');
+            });
+          }
+
+          document.addEventListener('click', function (e) {
+            if (!els.indicatorsPopover.contains(e.target) && !els.btnIndicatorsMenu.contains(e.target)) {
+              els.indicatorsPopover.classList.add('hidden');
+            }
+          });
+        }
+
+        if (els.toggleDwmfibs) {
+          els.toggleDwmfibs.addEventListener('change', function (e) {
+            state.indicators.dwmfibs.enabled = e.target.checked;
+            renderIndicators();
+          });
+        }
+        if (els.dwmfibsLines) {
+          els.dwmfibsLines.addEventListener('change', function (e) {
+            state.indicators.dwmfibs.showLines = e.target.checked;
+            renderIndicators();
+          });
+        }
+        if (els.dwmfibsFibs) {
+          els.dwmfibsFibs.addEventListener('change', function (e) {
+            state.indicators.dwmfibs.showFibLevels = e.target.checked;
+            renderIndicators();
+          });
+        }
+        if (els.dwmfibsWeekly) {
+          els.dwmfibsWeekly.addEventListener('change', function (e) {
+            state.indicators.dwmfibs.showWeekly = e.target.checked;
+            renderIndicators();
+          });
+        }
+        if (els.dwmfibsDaily) {
+          els.dwmfibsDaily.addEventListener('change', function (e) {
+            state.indicators.dwmfibs.showDaily = e.target.checked;
+            renderIndicators();
+          });
+        }
+        if (els.dwmfibsMonthly) {
+          els.dwmfibsMonthly.addEventListener('change', function (e) {
+            state.indicators.dwmfibs.showMonthly = e.target.checked;
+            renderIndicators();
+          });
+        }
+        if (els.dwmfibsExt) {
+          els.dwmfibsExt.addEventListener('change', function (e) {
+            state.indicators.dwmfibs.showExt = e.target.checked;
+            renderIndicators();
+          });
+        }
+        if (els.dwmfibsFiveDays) {
+          els.dwmfibsFiveDays.addEventListener('change', function (e) {
+            state.indicators.dwmfibs.showOnly5Days = e.target.checked;
+            renderIndicators();
+          });
+        }
+        if (els.dwmfibsLabels) {
+          els.dwmfibsLabels.addEventListener('change', function (e) {
+            state.indicators.dwmfibs.showLabels = e.target.checked;
+            renderIndicators();
+          });
+        }
+
+        // Liquidity Sweep Hunter [Refactored] Event Handlers
+        if (els.toggleLh) {
+          els.toggleLh.addEventListener('change', function (e) {
+            state.indicators.liquidityHunter.enabled = e.target.checked;
+            renderIndicators();
+          });
+        }
+        if (els.lhPivotLength) {
+          els.lhPivotLength.addEventListener('change', function (e) {
+            state.indicators.liquidityHunter.pivotLength = parseInt(e.target.value, 10) || 1;
+            renderIndicators();
+          });
+        }
+        if (els.lhVolFilter) {
+          els.lhVolFilter.addEventListener('change', function (e) {
+            state.indicators.liquidityHunter.volumeFilterPct = parseFloat(e.target.value) || 0;
+            renderIndicators();
+          });
+        }
+        if (els.lhLineWidthMax) {
+          els.lhLineWidthMax.addEventListener('input', function (e) {
+            const val = parseInt(e.target.value, 10) || 10;
+            state.indicators.liquidityHunter.lineWidthMax = val;
+            if (els.lhLineWidthMaxVal) els.lhLineWidthMaxVal.textContent = `${val}px`;
+            renderIndicators();
+          });
+        }
+        if (els.lhTranspIntense) {
+          els.lhTranspIntense.addEventListener('input', function (e) {
+            const val = parseInt(e.target.value, 10) || 0;
+            state.indicators.liquidityHunter.transpIntense = val;
+            if (els.lhTranspIntenseVal) els.lhTranspIntenseVal.textContent = `${val}%`;
+            renderIndicators();
+          });
+        }
+        if (els.lhTranspFaded) {
+          els.lhTranspFaded.addEventListener('input', function (e) {
+            const val = parseInt(e.target.value, 10) || 80;
+            state.indicators.liquidityHunter.transpFaded = val;
+            if (els.lhTranspFadedVal) els.lhTranspFadedVal.textContent = `${val}%`;
+            renderIndicators();
+          });
+        }
+        if (els.lhColorSupport) {
+          els.lhColorSupport.addEventListener('change', function (e) {
+            state.indicators.liquidityHunter.colorSupport = e.target.value;
+            renderIndicators();
+          });
+        }
+        if (els.lhColorResistance) {
+          els.lhColorResistance.addEventListener('change', function (e) {
+            state.indicators.liquidityHunter.colorResistance = e.target.value;
+            renderIndicators();
+          });
+        }
+        if (els.lhShowLines) {
+          els.lhShowLines.addEventListener('change', function (e) {
+            state.indicators.liquidityHunter.showLines = e.target.checked;
+            renderIndicators();
+          });
+        }
+        if (els.lhExtendBars) {
+          els.lhExtendBars.addEventListener('change', function (e) {
+            state.indicators.liquidityHunter.extendBars = e.target.checked ? 25 : 0;
+            renderIndicators();
+          });
+        }
+        if (els.lhShowSweeps) {
+          els.lhShowSweeps.addEventListener('change', function (e) {
+            state.indicators.liquidityHunter.showSweeps = e.target.checked;
+            renderIndicators();
+          });
+        }
+        if (els.lhActiveOnly) {
+          els.lhActiveOnly.addEventListener('change', function (e) {
+            state.indicators.liquidityHunter.activeOnly = e.target.checked;
+            renderIndicators();
+          });
+        }
+        if (els.lhShowLabels) {
+          els.lhShowLabels.addEventListener('change', function (e) {
+            state.indicators.liquidityHunter.showLabels = e.target.checked;
+            renderIndicators();
+          });
+        }
+
+        // Quick ATM strike scroll button
+        if (els.btnScrollAtm) {
+          els.btnScrollAtm.addEventListener('click', function () {
+            const atmRow = els.optionChainTbody.querySelector('.atm-row-active');
+            if (atmRow) {
+              atmRow.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            }
+          });
+        }
+
         // Table scroll interaction detection
-        els.optionChainTbody.parentElement.addEventListener('scroll', () => {
-          state.userInteractedWithTable = true;
-        }, { passive: true });
+        if (els.optionChainTbody && els.optionChainTbody.parentElement) {
+          els.optionChainTbody.parentElement.addEventListener('scroll', () => {
+            state.userInteractedWithTable = true;
+          }, { passive: true });
+        }
       }
 
       window.addEventListener('DOMContentLoaded', function () {
         updateMarketSessionDisplay();
         initTradingChart();
         setupZoomHandlers();
+        setupSplitResizer();
+        setSplitRatio(state.splitRatio, false);
         setupUIEventHandlers();
+        updateMaximizeButtonIcons();
+        renderIndicators();
+
+        // High-precision ResizeObserver to eliminate all chart canvas blur or layout lag
+        if (window.ResizeObserver && els.chartCanvasContainer) {
+          const ro = new ResizeObserver(() => {
+            handleChartResize();
+          });
+          ro.observe(els.chartCanvasContainer);
+        }
 
         fetchOfficialHistoricalCandles();
         fetchNiftySpotFeed();
